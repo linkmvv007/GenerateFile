@@ -5,85 +5,96 @@ using static GenerateFile.Settings;
 
 class Program
 {
+    const string Options = "Options";
+    private readonly static Random random = new();
+    private readonly static int newLineLength = Encoding.UTF8.GetByteCount(Environment.NewLine);
+
     static void Main(string[] args)
     {
-        const string Options = "Options";
+        Settings settings = ReadConfig();
 
-        IConfiguration config = new ConfigurationBuilder()
-            .AddJsonFile("appsettings.json")
-            .AddEnvironmentVariables()
-            .Build();
-
-        Settings settings = new();
-        config.GetSection(Options).Bind(settings);
-
-
-        List<string> words = LoadEnglishDictionaryFromFile(settings.DictionaryFileName);
+        var words = LoadEnglishDictionaryFromFile(settings.DictionaryFileName);
 
         GenerateTestFile(settings.OutputFileOptions, words);
     }
 
-    static List<string> LoadEnglishDictionaryFromFile(string filePath)
+    private static Settings ReadConfig()
     {
-        var words = new List<string>();
+        IConfiguration config = new ConfigurationBuilder()
+            .AddJsonFile("appsettings.json")
+            .Build();
+
+        // reading the original settings:
+        var settings = new Settings();
+        config.GetSection(Options).Bind(settings);
+        return settings;
+    }
+
+    private static IReadOnlyList<string> LoadEnglishDictionaryFromFile(string filePath)
+    {
+        var words = new List<string>(capacity: 2000);
 
         using (var reader = new StreamReader(filePath))
         {
             string line;
             while ((line = reader.ReadLine()) != null)
             {
+                if (!string.IsNullOrWhiteSpace(line))
+                { }
                 words.Add(line);
             }
         }
 
-        return words;
+        return words.AsReadOnly();
     }
 
-    static void GenerateTestFile(OutputParams parameters, List<string> words)
+    private static void GenerateTestFile(OutputParams parameters, IReadOnlyList<string> words)
     {
-        var currentSize = 0;
+        var countLines = 0L;
+        var currentSize = 0L;
         long targetSizeInBytes = parameters.TargetSizeInMBytes * 1024 * 1024L;
-
-        var newLineLength = Encoding.UTF8.GetByteCount(Environment.NewLine);
-        var count = words.Count;
-
-        var random = new Random();
 
         using (var sw = new StreamWriter(parameters.OutputFileName))
         {
-            var k = 0;
-
             while (currentSize < targetSizeInBytes)
             {
                 string line;
                 var number = random.Next(1, parameters.RandomMax);
-                int fract = k % 5;
+                var fract = countLines % parameters.Multiplier;
 
+                line = $"{number}.{GenerateNewWord(words)}";
                 if (fract > 0)
                 {
-                    var sb = new StringBuilder(words[random.Next(count)]);
                     for (int i = 0; i < fract; i++)
                     {
-                        sb.Append(' ');
-                        sb.Append(words[random.Next(count)]);
+                        WriteToFile(sw, line, ref currentSize);
+                        line = $" {GenerateNewWord(words)}";
                     }
-
-                    line = $"{number}.{sb.ToString()}";
-                }
-                else
-                {
-                    line = $"{number}.{words[random.Next(count)]}";
-
                 }
 
-                sw.WriteLine(line);
+                WriteLnToFile(sw, line, ref currentSize);
 
-                currentSize += Encoding.UTF8.GetByteCount(line) + newLineLength;
-
-                k++;
+                countLines++;
             }
         }
 
-        Console.WriteLine($"The file '{parameters.OutputFileName}' has been created and has a size of {targetSizeInBytes} bytes.");
+        Console.WriteLine($"The file '{parameters.OutputFileName}' has been created and has a size of {targetSizeInBytes}, real size: {currentSize} bytes, count lines = {countLines}.");
     }
+
+    private static void WriteToFile(StreamWriter sw, string line, ref long currentSize)
+    {
+        sw.Write(line);
+        currentSize += Encoding.UTF8.GetByteCount(line);
+    }
+    private static void WriteLnToFile(StreamWriter sw, string line, ref long currentSize)
+    {
+        WriteToFile(sw, line, ref currentSize);
+
+        sw.WriteLine();
+        currentSize += newLineLength;
+    }
+
+    private static string GenerateNewWord(IReadOnlyList<string> words) =>
+         words[random.Next(words.Count)];
+
 }
