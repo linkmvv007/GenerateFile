@@ -6,25 +6,23 @@ using System.Diagnostics;
 Console.WriteLine("Hello, World!");
 
 
-const string srcFile = "c:\\Users\\Dell\\source\\repos\\3deye\\GenerateFile\\GenerateFile\\bin\\Debug\\net8.0\\output.txt";
+//const string srcFile = "c:\\Users\\Dell\\source\\repos\\3deye\\GenerateFile\\GenerateFile\\bin\\Debug\\net8.0\\output.txt";
 //const string srcFile = "c:\\Users\\Dell\\source\\repos\\3deye\\GenerateFile\\GenerateFile\\bin\\Debug\\net8.0\\test.txt";
-//const string srcFile = "c:\\Users\\Dell\\source\\repos\\3deye\\GenerateFile\\GenerateFile\\bin\\Debug\\net8.0\\output1.txt";
+const string srcFile = "c:\\Users\\Dell\\source\\repos\\3deye\\GenerateFile\\GenerateFile\\bin\\Debug\\net8.0\\output1.txt";
 
 Stopwatch stopwatch = new Stopwatch();
 stopwatch.Start();
 
-using (IFileSorting file = new TextFileLinePositions(srcFile))
+using (IFileSorting file = new TextFileLinePositions(srcFile))  // src file
+using (var writer = new WriteToFile("sorted.txt"))              // output file
 {
-
-    IFileWriter processor = new WriterProcessor(file);
-
-    processor.WriteToFile(new WriteToFile("sorted.txt"));
+    IOutputWriter processor = new WriterProcessor(file);
+    processor.SortingAndWriteToOutput(writer);
 }
 
 stopwatch.Stop();
 
 Console.WriteLine($"Время выполнения: {stopwatch.ElapsedMilliseconds} миллисекунд");
-
 TimeSpan ts = stopwatch.Elapsed;
 
 // Форматирование времени в минутах с долями секунд
@@ -33,6 +31,9 @@ ts.Minutes, ts.Seconds, ts.Milliseconds / 10);
 
 // Вывод времени выполнения
 Console.WriteLine($"Время выполнения: {elapsedTime} минут");
+
+
+
 
 Console.WriteLine("Нажмите любую клавишу для выхода...");
 Console.ReadKey();
