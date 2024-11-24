@@ -12,13 +12,14 @@ internal sealed class WriteToFile : IWriteToFile
         _fileName = fileName;
 
         _fs = new FileStream(_fileName, FileMode.Create, FileAccess.Write);
-        _sw = new StreamWriter(new BufferedStream(_fs));
+        //_sw = new StreamWriter(new BufferedStream(_fs));
+        _sw = new StreamWriter(_fs);
     }
 
     public void Dispose()
     {
-        _sw.Close();
-        _fs.Dispose();
+        _sw?.Dispose();
+        _fs?.Dispose();
     }
 
     void IWriteToFile.WriteToFile(string text)

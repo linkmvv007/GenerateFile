@@ -1,6 +1,17 @@
 ﻿using SortTextFile.Interfaces;
+using System.Text;
 
 namespace SortTextFile;
+internal class Info
+{
+    internal Info(long p, long c)
+    {
+        pos = new() { p };
+        count = c;
+    }
+    internal List<long> pos { get; set; }
+    internal long count { get; set; }
+};
 
 /// <summary>
 /// remembers the beginning of line positions in the file
@@ -10,12 +21,19 @@ internal sealed class TextFileLinePositions : IFileSorting
     private readonly FileStream _fs;
     private readonly StreamReader _sr;
     private List<long> _sortedPositions;
+    private Dictionary<string, Info> _dict;
+    private bool _isSorted = false;
+    private readonly int _capacity;
 
+    private readonly string _fileName;
 
-    internal TextFileLinePositions(string fileName)
+    internal TextFileLinePositions(string fileName, int capacity = 100000000)
     {
+        _fileName = fileName;
         _fs = new FileStream(fileName, FileMode.Open, FileAccess.Read);
         _sr = new StreamReader(_fs);
+
+        _capacity = capacity;
     }
 
     #region Public
@@ -23,7 +41,7 @@ internal sealed class TextFileLinePositions : IFileSorting
     {
         get
         {
-            if (_sortedPositions is null)
+            if (!_isSorted)
             {
                 Sort();
             }
@@ -42,8 +60,8 @@ internal sealed class TextFileLinePositions : IFileSorting
 
     public void Dispose()
     {
-        _sr.Close();
-        _fs.Dispose();
+        _sr?.Dispose();
+        _fs?.Dispose();
     }
 
     #endregion
@@ -53,9 +71,12 @@ internal sealed class TextFileLinePositions : IFileSorting
     /// </summary>
     private void Sort()
     {
-        _sortedPositions = GetLinePositions();
+        if (_sortedPositions is null)
+            _sortedPositions = GetLinePositions();
 
         _sortedPositions.Sort((index1, index2) => SortMethod(index1, index2));
+
+        _isSorted = true;
     }
 
     static long _progress = 0;
@@ -72,14 +93,18 @@ internal sealed class TextFileLinePositions : IFileSorting
             _progress = 0L;
         }
 
-        var xSpan = x.AsSpan();
-        var ySpan = y.AsSpan();
+        return CompareFunc(x, y);
+    }
 
-        var xDotIndex = xSpan.IndexOf('.');
-        var yDotIndex = ySpan.IndexOf('.');
+    internal static int CompareFunc(string x, string y)
+    {
+        ReadOnlySpan<char> xSpan, xTextPart;
+        int xDotIndex;
+        GetStringKey(x, out xSpan, out xDotIndex, out xTextPart);
 
-        var xTextPart = xSpan.Slice(xDotIndex + 1);
-        var yTextPart = ySpan.Slice(yDotIndex + 1);
+        ReadOnlySpan<char> ySpan, yTextPart;
+        int yDotIndex;
+        GetStringKey(y, out ySpan, out yDotIndex, out yTextPart);
 
         int textComparison = xTextPart.CompareTo(yTextPart, StringComparison.Ordinal);
         if (textComparison != 0)
@@ -87,13 +112,21 @@ internal sealed class TextFileLinePositions : IFileSorting
             return textComparison;
         }
 
-        var xNumberPart = xSpan.Slice(0, xDotIndex);
-        var yNumberPart = ySpan.Slice(0, yDotIndex);
-
-        var xNumber = long.Parse(xNumberPart);
-        var yNumber = long.Parse(yNumberPart);
+        long xNumber = GetNumber(xSpan, xDotIndex);
+        long yNumber = GetNumber(ySpan, yDotIndex);
 
         return (xNumber == yNumber) ? 0 : (xNumber > yNumber ? 1 : -1);
+    }
+
+    private static long GetNumber(ReadOnlySpan<char> xSpan, int xDotIndex) =>
+     long.Parse(xSpan.Slice(0, xDotIndex));
+
+
+    private static void GetStringKey(string x, out ReadOnlySpan<char> xSpan, out int xDotIndex, out ReadOnlySpan<char> xTextPart)
+    {
+        xSpan = x.AsSpan();
+        xDotIndex = xSpan.IndexOf('.');
+        xTextPart = xSpan.Slice(xDotIndex + 1);
     }
 
     private void GoToPosition(long position)
@@ -115,50 +148,103 @@ internal sealed class TextFileLinePositions : IFileSorting
         //return debug;
     }
 
-    //private List<long> GetLinePositions()
+    private List<long> GetLinePositions()
+    {
+        Console.WriteLine($"Analysing file {_fileName} ...");
+
+        var positions = new List<long>(capacity: _capacity);
+        using (var fs = new FileStream(_fileName, FileMode.Open, FileAccess.Read))
+        using (var sr = new StreamReader(fs, Encoding.UTF8, true, 10 * 1024 * 1024)) // Чтение блоками по 10 МБ
+        {
+            long position = 0;
+            string? line;
+            while ((line = sr.ReadLine()) != null)
+            {
+                positions.Add(position);
+
+                //if (analys)
+                //    AnalyzeLine(position, line);
+
+                position += line.Length + Environment.NewLine.Length;
+            }
+        }
+
+        Console.WriteLine($"Analying file {_fileName} ... Ok");
+        return positions;
+    }
+    /*
+    void AnalyzeLine(long position, string line)
+    {
+        ReadOnlySpan<char> xSpan, xTextPart;
+        int xDotIndex;
+        GetStringKey(line, out xSpan, out xDotIndex, out xTextPart);
+
+        var ch = xTextPart.Slice(0, 1);
+
+        string key = ch[0] switch
+        {
+            char c when Char.IsLetterOrDigit(c) => ch.ToString(),
+            char c when c > 'A' => "!",
+            _ => "~"
+        };
+
+        if (_dict.ContainsKey(key) == false)
+            _dict.Add(key, new Info(position, 0L));
+        else
+        {
+            var info = _dict[key];
+            info.count++;
+            info.pos.Add(position);
+        }
+    }*/
+    /* void IFileSorting.Analysis()
+     {
+         _dict = new();
+
+         if (_sortedPositions is null)
+             _sortedPositions = GetLinePositions(true);
+
+         // 
+         Console.WriteLine("Сreating files...");
+         foreach (var item in _dict)
+         {
+             Console.WriteLine($" запись файла '{item.Key}' ...");
+             using (IWriteToFile file = new WriteToFile(item.Key))
+             {
+                 foreach (var pos in item.Value.pos)
+                     file.WriteToFile(ReadLineAtPosition(pos));
+             }
+         }
+
+         Console.WriteLine("Сreating files... Ok");
+     }*/
+
+    //public List<long> GetLinePositions()
     //{
     //    var positions = new List<long>(capacity: 1000000);
-    //    long position = 0;
-    //    _fs.Seek(0, SeekOrigin.Begin);
-    //    _sr.DiscardBufferedData();
 
-    //    string line;
-    //    while ((line = _sr.ReadLine()) != null)
+    //    long position = 0;
+    //    int byteRead;
+    //    bool isNewLine = true;
+
+    //    while ((byteRead = _fs.ReadByte()) != -1)
     //    {
-    //        positions.Add(position);
-    //        // position = _fs.Position;
-    //        position += _sr.CurrentEncoding.GetByteCount(line);
+    //        if (isNewLine)
+    //        {
+    //            positions.Add(position);
+    //            isNewLine = false;
+    //        }
+
+    //        if (byteRead == '\n')
+    //        {
+    //            isNewLine = true;
+    //        }
+
+    //        position++;
     //    }
 
     //    return positions;
     //}
-
-    public List<long> GetLinePositions()
-    {
-        var positions = new List<long>(capacity: 1000000);
-
-        long position = 0;
-        int byteRead;
-        bool isNewLine = true;
-
-        while ((byteRead = _fs.ReadByte()) != -1)
-        {
-            if (isNewLine)
-            {
-                positions.Add(position);
-                isNewLine = false;
-            }
-
-            if (byteRead == '\n')
-            {
-                isNewLine = true;
-            }
-
-            position++;
-        }
-
-        return positions;
-    }
 }
 
 
