@@ -2,16 +2,20 @@
 using System.Text;
 
 namespace SortTextFile;
-internal class Info
-{
-    internal Info(long p, long c)
-    {
-        pos = new() { p };
-        count = c;
-    }
-    internal List<long> pos { get; set; }
-    internal long count { get; set; }
-};
+//internal class Info
+//{
+//    internal Info(long p, long c)
+//    {
+//        pos = new() { p };
+//        count = c;
+//    }
+
+//    /// <summary>
+//    /// Line positions in file
+//    /// </summary>
+//    internal List<long> pos { get; set; }
+//    internal long count { get; set; }
+//};
 
 /// <summary>
 /// remembers the beginning of line positions in the file
@@ -21,7 +25,7 @@ internal sealed class TextFileLinePositions : IFileSorting
     private readonly FileStream _fs;
     private readonly StreamReader _sr;
     private List<long> _sortedPositions;
-    private Dictionary<string, Info> _dict;
+    //private Dictionary<string, Info> _dict;
     private bool _isSorted = false;
     private readonly int _capacity;
 
@@ -36,7 +40,7 @@ internal sealed class TextFileLinePositions : IFileSorting
         _capacity = capacity;
     }
 
-    #region Public
+    #region IFileSorting
     IReadOnlyList<long> IFileSorting.SortedPositions
     {
         get
@@ -64,7 +68,7 @@ internal sealed class TextFileLinePositions : IFileSorting
         _fs?.Dispose();
     }
 
-    #endregion
+    #endregion //IFileSorting
 
     /// <summary>
     /// Sorting indexes based on row contents
@@ -74,24 +78,28 @@ internal sealed class TextFileLinePositions : IFileSorting
         if (_sortedPositions is null)
             _sortedPositions = GetLinePositions();
 
+        Console.WriteLine($"Sorting {_fileName} file ....");
+
         _sortedPositions.Sort((index1, index2) => SortMethod(index1, index2));
 
         _isSorted = true;
+
+        Console.WriteLine($"Sorting {_fileName} file .... OK");
     }
 
-    static long _progress = 0;
+    //static long _progress = 0;
     private int SortMethod(long index1, long index2)
     {
-        _progress++;
+        //_progress++;
 
         string x = ReadLineAtPosition(index1);
         string y = ReadLineAtPosition(index2);
 
-        if (_progress++ > 1000000L)
-        {
-            Console.WriteLine($"{index1}: {x} \n {index2}: {y}");
-            _progress = 0L;
-        }
+        //if (_progress++ > 1000000L)
+        //{
+        //    Console.WriteLine($"{index1}: {x} \n {index2}: {y}");
+        //    _progress = 0L;
+        //}
 
         return CompareFunc(x, y);
     }
@@ -137,20 +145,14 @@ internal sealed class TextFileLinePositions : IFileSorting
     }
     private string ReadLineAtPosition(long position)
     {
-        //position = 104850748L;
         GoToPosition(position);
 
         return _sr.ReadLine();
-
-        //var debug = _sr.ReadLine();
-
-        //Console.WriteLine($"{position}: {debug}");
-        //return debug;
     }
 
     private List<long> GetLinePositions()
     {
-        Console.WriteLine($"Analysing file {_fileName} ...");
+        Console.WriteLine($"Reading file {_fileName} ...");
 
         var positions = new List<long>(capacity: _capacity);
         using (var fs = new FileStream(_fileName, FileMode.Open, FileAccess.Read))
@@ -161,15 +163,11 @@ internal sealed class TextFileLinePositions : IFileSorting
             while ((line = sr.ReadLine()) != null)
             {
                 positions.Add(position);
-
-                //if (analys)
-                //    AnalyzeLine(position, line);
-
                 position += line.Length + Environment.NewLine.Length;
             }
         }
 
-        Console.WriteLine($"Analying file {_fileName} ... Ok");
+        Console.WriteLine($"Reading file {_fileName} ... Ok");
         return positions;
     }
     /*

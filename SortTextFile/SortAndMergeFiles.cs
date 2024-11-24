@@ -4,10 +4,6 @@ using System.Collections.ObjectModel;
 
 namespace SortTextFile;
 
-interface ISortAndMergeFiles
-{
-    void Sort();
-}
 
 internal sealed class SortAndMergeFiles : ISortAndMergeFiles
 {
@@ -29,31 +25,11 @@ internal sealed class SortAndMergeFiles : ISortAndMergeFiles
 
     void ISortAndMergeFiles.Sort()
     {
-        //var sortedNames = new List<string>();
 
-        //// sorting:
-        //foreach (var fileIndex in _infoFiles.Keys)
-        //{
-        //    var nameFile = $"chunk_{fileIndex}";
-        //    var sortedNameFile = $"{nameFile}_sorted.ind";
-
-        //    //using (IFileSorting file = new TextFileLinePositions($"{nameFile}.ind", _maxLinesCount))  // src file
-        //    using (IFileSorting file = new TextFileLinePositions($"{nameFile}.ind", (int)_infoFiles[fileIndex]))  // src file
-        //    using (var writer = new WriteToFile($"{sortedNameFile}"))              // output file
-        //    {
-        //        IOutputWriter processor = new WriterProcessor(file);
-        //        processor.SortingAndWriteToOutput(writer);
-        //    }
-        //    sortedNames.Add(sortedNameFile);
-        //}
+        var sortedChunkFiles = ParallelSort();
 
 
-
-        //merge files:
-        // MergeSortedChunks(sortedNames.AsReadOnly(), $"{_sourceFileName}_sorted");
-
-        // MergeFiles(sortedNames.AsReadOnly(), $"{_sourceFileName}_sorted");
-        MergeSortedChunks(ParallelSort(), $"{_sourceFileName}_sorted");
+        MergeSortedChunks(sortedChunkFiles, $"{_sourceFileName}_sorted");
 
     }
     private static string GetChunkNameFile(long fileIndex) =>
@@ -77,13 +53,8 @@ internal sealed class SortAndMergeFiles : ISortAndMergeFiles
 
         var results = Parallel.ForEach(_infoFiles.Keys, parallelOptions, fileIndex =>
         {
-            //var nameFile = $"chunk_{fileIndex}";
-            //var sortedNameFile = $"{nameFile}_sorted.ind";
             var sortedFullNameFile = GetSortedChunkFullNameFile(fileIndex);
 
-            //todo
-
-            //using (IFileSorting file = new TextFileLinePositions($"{nameFile}.ind", (int)_infoFiles[fileIndex]))  // src file
             using (IFileSorting file = new TextFileLinePositions(GetChunkFullNameFile(fileIndex), (int)_infoFiles[fileIndex]))  // src file
             using (var writer = new WriteToFile($"{sortedFullNameFile}"))              // output file
             {
@@ -94,27 +65,24 @@ internal sealed class SortAndMergeFiles : ISortAndMergeFiles
             сoncurrentBag.Add(sortedFullNameFile);
         });
 
-        //todo: removes files
+        //removes chunk-files:
         foreach (var fileIndex in _infoFiles.Keys)
         {
-            DeleteFile(GetChunkFullNameFile(fileIndex));
-
+            Utils.DeleteFile(GetChunkFullNameFile(fileIndex));
         }
+
         return сoncurrentBag.ToList().AsReadOnly();
-    }
-
-    private static void DeleteFile(string filePath)
-    {
-        if (File.Exists(filePath))
-        {
-            File.Delete(filePath);
-        }
     }
 
     record MergeInfo(string line, int nReader);
 
     static void MergeSortedChunks(IReadOnlyList<string> sortedChunks, string outputFile)
     {
+
+        Console.WriteLine($"{sortedChunks.Count} chuks files  merging to {outputFile} ...");
+
+        var progress = 0L;
+
         var readers = new List<StreamReader>();
         foreach (string chunk in sortedChunks)
         {
@@ -134,20 +102,51 @@ internal sealed class SortAndMergeFiles : ISortAndMergeFiles
                     }
                 }
 
+                var dublicates = new List<int>();
+
                 while (buffer.Count > 0)
                 {
+                    progress++;
+                    if (progress > 10000)
+                    {
+                        Console.WriteLine($"{progress} lines are merged ...");
+                        progress = 0;
+
+                    }
+
                     buffer.Sort((x, y) => SortMethod(x, y));
+                    dublicates.Clear();
 
                     var kvp = buffer[0];
 
-                    sw.WriteLine(kvp.line); // вывести в файл строку
-
-                    buffer.Remove(buffer[0]); // удалить из буфера
-
-                    string line = readers[kvp.nReader].ReadLine();
-                    if (line != null) // пока реадеру есть что читать
+                    //todo: посмотреть нет ли в буфере дубликатов минимальной строки
+                    for (int i = 1; i < buffer.Count; i++)
                     {
-                        buffer.Add(new MergeInfo(line, kvp.nReader));
+                        if (kvp.line == buffer[i].line)
+                            dublicates.Add(i);
+                        else
+                            break;
+                    }
+
+                    for (int i = 0; i <= dublicates.Count; i++)
+                    {
+                        sw.WriteLine(kvp.line); // вывести в файл строку
+                        buffer.Remove(buffer[i]); // удалить из буфера
+                    }
+
+                    for (var i = 0; i <= dublicates.Count; i++)
+                    {
+                        string? line = readers[buffer[i].nReader].ReadLine();
+                        if (line != null) // пока реадеру есть что читать
+                        {
+                            while (line == kvp.line) // проверить еще раз дубликат при очередном пополнении буфера
+                            {
+                                sw.WriteLine(kvp.line);
+                                line = readers[buffer[i].nReader].ReadLine();
+                            }
+
+                            buffer.Add(new MergeInfo(line, buffer[i].nReader));
+                        }
                     }
                 }
             }
@@ -159,12 +158,11 @@ internal sealed class SortAndMergeFiles : ISortAndMergeFiles
                 reader.Dispose();
             }
 
-            // removed sorted chunks files
-            foreach (var item in sortedChunks)
-            {
-                DeleteFile(item);
-            }
+            // removed sorted chunks files:
+            Utils.DeleteFiles(sortedChunks);
         }
+
+        Console.WriteLine($"{sortedChunks.Count} chuks files  merging ...Ok");
     }
 
     private static int SortMethod(MergeInfo x, MergeInfo y) =>

@@ -3,18 +3,6 @@ using System.Collections.ObjectModel;
 using System.Text;
 
 namespace SortTextFile;
-interface IFileSplitter
-{
-    void Split();
-
-    ReadOnlyDictionary<long, long> InfoFiles { get; }
-
-    int MaxLinesCount { get; }
-
-    string SourceFileName { get; }
-
-
-}
 
 internal sealed class FileSplitter : IFileSplitter
 {
