@@ -1,6 +1,6 @@
 ﻿using SortTextFile;
 using SortTextFile.Interfaces;
-using System.Text;
+using System.IO.MemoryMappedFiles;
 
 internal sealed class SortAndMergeTextBlocks
 {
@@ -32,17 +32,17 @@ internal sealed class SortAndMergeTextBlocks
     {
         int blockIndex = 0;
 
-        //using (var mmf = MemoryMappedFile.CreateFromFile(_folderHelper.GetBookIndexFile(fileName), FileMode.Open, "MMF"))
-        //using (var stream = mmf.CreateViewStream())
-        //using (var reader = new StreamReader(stream))
-        using (var fs = new FileStream(_folderHelper.GetBookIndexFile(Utils.FixFileName(fileName)), FileMode.Open, FileAccess.Read))
-        using (var reader = new StreamReader(fs, Encoding.UTF8, true, 10 * 1024 * 1024)) // Чтение блоками по 1 МБ
+        using (var mmf = MemoryMappedFile.CreateFromFile(_folderHelper.GetBookIndexFile(fileName), FileMode.Open, "MMF"))
+        using (var stream = mmf.CreateViewStream())
+        using (var reader = new StreamReader(stream))
+        //using (var fs = new FileStream(_folderHelper.GetBookIndexFile(Utils.FixFileName(fileName)), FileMode.Open, FileAccess.Read))
+        //using (var reader = new StreamReader(fs, Encoding.UTF8, true, 10 * 1024 * 1024)) // Чтение блоками по 1 МБ
         {
             var lineList = new List<string>(capacity: blockSize);
             string line;
 
-            // while ((line = reader.ReadLine()) != null && line[0] != '\0')
-            while ((line = reader.ReadLine()) != null)
+            while ((line = reader.ReadLine()) != null && line[0] != '\0')
+            //while ((line = reader.ReadLine()) != null)
             {
                 lineList.Add(line);
 
