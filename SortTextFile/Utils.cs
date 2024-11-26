@@ -1,4 +1,6 @@
-﻿namespace SortTextFile;
+﻿using SortTextFile.Interfaces;
+
+namespace SortTextFile;
 
 internal class Utils
 {
@@ -17,12 +19,7 @@ internal class Utils
         }
     }
 
-    internal static void DeleteFiles(string folderPath)
-    {
-        DeleteFiles(Directory.GetFiles(folderPath));
-    }
-
-    internal static void MergeFiles(string destFileName, IOrderedEnumerable<string> srcFileNames, FolderHelper helper)
+    internal static void MergeFiles(string destFileName, IOrderedEnumerable<string> srcFileNames, IFoldersHelper helper)
     {
         using (var destStream = File.OpenWrite(destFileName))
         {
@@ -34,8 +31,13 @@ internal class Utils
                 {
                     srcStream.CopyTo(destStream);
                 }
+
+                //!! to do: removed block files sorted 
+                // Utils.DeleteFile(srcFileName);
             }
         }
+
+
     }
 
     internal static void ClearFolder(string path, bool recursive = true)
@@ -56,18 +58,4 @@ internal class Utils
         }
     }
 
-    internal static string FixFileName(string str)
-    {
-        return str;
-        //if (str[str.Length - 1] != ' ')
-        //    return str;
-
-        //Span<char> span = str.ToCharArray();
-        //int len = span.Length;
-        //while (len > 0 && span[len - 1] == ' ')
-        //{
-        //    len--;
-        //}
-        //return new string(span.Slice(0, len)) + new string('!', span.Length - len);
-    }
 }

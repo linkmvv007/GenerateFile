@@ -12,8 +12,8 @@ internal sealed class FileSplitterLexicon : IFileSplitterLexicon
     const long BufferSize = 1000000L;
     private readonly string _fileName;
     private readonly Dictionary<string, List<string>> _indexFileNames = new(capacity: 26 * 33 + 2);
-    private readonly FolderHelper _folderHelper;
-    internal FileSplitterLexicon(string fileName, FolderHelper folderHelper)
+    private readonly IFoldersHelper _folderHelper;
+    internal FileSplitterLexicon(string fileName, IFoldersHelper folderHelper)
     {
         _fileName = fileName;
         _folderHelper = folderHelper;
@@ -27,8 +27,8 @@ internal sealed class FileSplitterLexicon : IFileSplitterLexicon
         //todo:progress bar
         var counter = 0L;
 
-        using (var mmf = MemoryMappedFile.CreateFromFile(_fileName, FileMode.Open, "MMF")) // Создание отображенного в память файла
-        using (var stream = mmf.CreateViewStream())// Создание представления для чтения файла
+        using (var mmf = MemoryMappedFile.CreateFromFile(_fileName, FileMode.Open, "MMF"))  // Creating a memory-mapped file
+        using (var stream = mmf.CreateViewStream(0, 0, MemoryMappedFileAccess.Read))        // Creating a view for reading a file
         using (var sr = new StreamReader(stream, Encoding.UTF8))
         //using (var fs = new FileStream(_fileName, FileMode.Open, FileAccess.Read))
         //using (var sr = new StreamReader(fs, Encoding.UTF8, true, 100 * 1024 * 1024)) // Reading in blocks of 100 MB (44sec - 2Gb)
@@ -40,26 +40,14 @@ internal sealed class FileSplitterLexicon : IFileSplitterLexicon
             //while ((line = sr.ReadLine()) != null)
             {
                 name = GetNameIndexFile(line);
-                //if (name == "axe ")
-                //{
-                //    Console.WriteLine($"{line}");
-                //}
-                //else
-                //{
-                //    if (name == "axe")
-                //        Console.WriteLine($"{line}");
-                //}
-
 
                 if (!_indexFileNames.ContainsKey(name))
                 {
-
                     _indexFileNames.Add(name, new List<string>(capacity: 39 * 1024) { line });
                 }
                 else
                 {
-                    var item = _indexFileNames[name];
-                    item.Add(line);
+                    _indexFileNames[name].Add(line);
                 }
 
                 counter++;
@@ -123,7 +111,7 @@ internal sealed class FileSplitterLexicon : IFileSplitterLexicon
             throw new ApplicationException("Bad file format. Name not found");
         }
 
-        xTextPart = xSpan.Slice(xDotIndex + 1);
+        xTextPart = xSpan[(xDotIndex + 1)..];
     }
 
     private void AppendBufferTextToFile()
@@ -132,7 +120,7 @@ internal sealed class FileSplitterLexicon : IFileSplitterLexicon
         {
             if (item.Value?.Count > 0)
             {
-                var filePath = Path.Combine(_folderHelper.BookIndexFolder, Utils.FixFileName(item.Key));
+                var filePath = Path.Combine(_folderHelper.BookIndexFolder, item.Key);
                 using (StreamWriter sw = File.AppendText(filePath))
                 {
                     foreach (var line in item.Value)

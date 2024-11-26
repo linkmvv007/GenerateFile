@@ -2,19 +2,25 @@
 using SortTextFile.Interfaces;
 using System.IO.MemoryMappedFiles;
 
-internal sealed class SortAndMergeTextBlocks
+internal sealed class SortAndMergeTextBlocks : ISortAndMergeTextBlocks
 {
-    const int blockSize = 1000; // Количество строк в блоке
+    const int blockSize = 1000; // The number of lines in the block
 
-    private readonly FolderHelper _folderHelper;
+    private readonly IFoldersHelper _folderHelper;
     private readonly IFileSplitterLexicon _splitter;
-    internal SortAndMergeTextBlocks(IFileSplitterLexicon splitter, FolderHelper folderHelper)
+
+    /// <summary>
+    /// 
+    /// </summary>
+    /// <param name="splitter"></param>
+    /// <param name="folderHelper"></param>
+    internal SortAndMergeTextBlocks(IFileSplitterLexicon splitter, IFoldersHelper folderHelper)
     {
         _splitter = splitter;
         _folderHelper = folderHelper;
     }
 
-    internal void Process()
+    void ISortAndMergeTextBlocks.Process()
     {
         var files = _splitter.GetIndexs;
 
@@ -32,8 +38,9 @@ internal sealed class SortAndMergeTextBlocks
     {
         int blockIndex = 0;
 
-        using (var mmf = MemoryMappedFile.CreateFromFile(_folderHelper.GetBookIndexFile(fileName), FileMode.Open, "MMF"))
-        using (var stream = mmf.CreateViewStream())
+        var bookIndexFile = _folderHelper.GetBookIndexFile(fileName);
+        using (var mmf = MemoryMappedFile.CreateFromFile(bookIndexFile, FileMode.Open, "MMF_BookIndex"))
+        using (var stream = mmf.CreateViewStream(0, 0, MemoryMappedFileAccess.Read))
         using (var reader = new StreamReader(stream))
         //using (var fs = new FileStream(_folderHelper.GetBookIndexFile(Utils.FixFileName(fileName)), FileMode.Open, FileAccess.Read))
         //using (var reader = new StreamReader(fs, Encoding.UTF8, true, 10 * 1024 * 1024)) // Чтение блоками по 1 МБ
@@ -59,36 +66,19 @@ internal sealed class SortAndMergeTextBlocks
             }
         }
 
+        //todo : remove book index file:
+        Utils.DeleteFile(bookIndexFile);
+
         MergeSortedFiles(fileName, blockIndex);
     }
 
-    void SortAndSaveBlock(List<string> block, int blockIndex, string fileName)
+    private void SortAndSaveBlock(List<string> block, int blockIndex, string fileName)
     {
         block.Sort((x, y) => CompareFunc(x, y));
 
         File.WriteAllLines(_folderHelper.GetChunkFullNameFile(fileName, blockIndex), block);
     }
-    internal static int CompareFunc(string x, string y)
-    {
-        ReadOnlySpan<char> xSpan, xTextPart;
-        int xDotIndex;
-        GetStringKey(x, out xSpan, out xDotIndex, out xTextPart);
 
-        ReadOnlySpan<char> ySpan, yTextPart;
-        int yDotIndex;
-        GetStringKey(y, out ySpan, out yDotIndex, out yTextPart);
-
-        int textComparison = xTextPart.CompareTo(yTextPart, StringComparison.Ordinal);
-        if (textComparison != 0)
-        {
-            return textComparison;
-        }
-
-        long xNumber = GetNumber(xSpan, xDotIndex);
-        long yNumber = GetNumber(ySpan, yDotIndex);
-
-        return (xNumber == yNumber) ? 0 : (xNumber > yNumber ? 1 : -1);
-    }
     private static long GetNumber(ReadOnlySpan<char> xSpan, int xDotIndex) =>
         long.Parse(xSpan[..xDotIndex]);
 
@@ -99,7 +89,7 @@ internal sealed class SortAndMergeTextBlocks
         xTextPart = xSpan[(xDotIndex + 1)..];
     }
 
-    void MergeSortedFiles(string fileName, int blockIndex)
+    private void MergeSortedFiles(string fileName, int blockIndex)
     {
         if (blockIndex < 1)
         {
@@ -111,6 +101,8 @@ internal sealed class SortAndMergeTextBlocks
 
             return;
         }
+
+
         var readers = new StreamReader[blockIndex + 1];
         for (int i = 0; i <= blockIndex; i++)
         {
@@ -132,15 +124,15 @@ internal sealed class SortAndMergeTextBlocks
                     {
                         queue[line] = new Queue<int>();
                     }
-                    queue[line].Enqueue(i);  // строка в какой очереди находится
+                    queue[line].Enqueue(i);  // the line in which queue is located
                 }
             }
 
             while (queue.Count > 0)
             {
                 var kvp = queue.First();
-                string line = kvp.Key;                  //line
-                Queue<int> fileIndices = kvp.Value;  //  queue
+                string line = kvp.Key;               // line
+                Queue<int> fileIndices = kvp.Value;  // queue
 
                 // We write the lines as many times as it occurs
                 while (fileIndices.Count > 0)
@@ -180,6 +172,40 @@ internal sealed class SortAndMergeTextBlocks
             }
 
         }
+    }
+
+    /// <summary>
+    /// Sorting function
+    /// </summary>
+    /// <param name="x"></param>
+    /// <param name="y"></param>
+    /// <returns></returns>
+    private static int CompareFunc(string x, string y)
+    {
+        ReadOnlySpan<char> xSpan, xTextPart;
+        int xDotIndex;
+        GetStringKey(x, out xSpan, out xDotIndex, out xTextPart);
+
+        ReadOnlySpan<char> ySpan, yTextPart;
+        int yDotIndex;
+        GetStringKey(y, out ySpan, out yDotIndex, out yTextPart);
+
+        int textComparison = xTextPart.CompareTo(yTextPart, StringComparison.Ordinal);
+        if (textComparison != 0)
+        {
+            return textComparison;
+        }
+
+        long xNumber = GetNumber(xSpan, xDotIndex);
+        long yNumber = GetNumber(ySpan, yDotIndex);
+
+        return (xNumber == yNumber) ? 0 : (xNumber > yNumber ? 1 : -1);
+    }
+
+    private class CustomComparer : IComparer<string>
+    {
+        public int Compare(string? x, string? y) => CompareFunc(x, y);
+
     }
 }
 

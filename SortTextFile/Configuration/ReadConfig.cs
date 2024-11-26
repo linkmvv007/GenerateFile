@@ -1,6 +1,6 @@
 ﻿using Microsoft.Extensions.Configuration;
 
-namespace SortTextFile;
+namespace SortTextFile.Configuration;
 
 internal class Configuration
 {

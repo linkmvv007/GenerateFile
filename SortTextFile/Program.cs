@@ -1,5 +1,6 @@
 ﻿// See https://aka.ms/new-console-template for more information
 using SortTextFile;
+using SortTextFile.Configuration;
 using SortTextFile.Interfaces;
 using System.Diagnostics;
 
@@ -13,69 +14,15 @@ const string srcFile = "c:\\Users\\Dell\\source\\repos\\3deye\\GenerateFile\\Gen
 //const string srcFile = "c:\\Users\\Dell\\source\\repos\\3deye\\GenerateFile\\GenerateFile\\bin\\Debug\\net8.0\\test.txt";
 //const string srcFile = "c:\\Users\\Dell\\source\\repos\\3deye\\GenerateFile\\GenerateFile\\bin\\Debug\\net8.0\\output1.txt";
 
-/*List<long> lineStartPositions = new List<long>();
-
-using (FileStream fs = new FileStream(srcFile, FileMode.Open, FileAccess.Read))
-using (StreamReader sr = new StreamReader(fs, Encoding.UTF8, true, 10 * 1024 * 1024)) // Чтение блоками по 1 МБ
-{
-    long position = 0;
-    string line;
-    while ((line = sr.ReadLine()) != null)
-    {
-        lineStartPositions.Add(position);
-        position += line.Length + Environment.NewLine.Length;
-
-        // Анализ строки
-        AnalyzeLine(line);
-    }
-}
-
-// Вывод позиций начала строк
-foreach (var pos in lineStartPositions)
-{
-    //Console.WriteLine(pos);
-}
-
-
-static void AnalyzeLine(string line)
-{
-    // Ваш код для анализа строки
-    // Console.WriteLine($"Анализ строки: {line}");
-}
-
-*/
-
-
 
 
 Stopwatch stopwatch = new Stopwatch();
 stopwatch.Start();
-//using (IFileSorting file = new TextFileLinePositions(srcFile))
-//{
-//    file.MakeDictionary();
-//}
+
 
 var settings = Configuration.ReadConfig();
-var folderHelper = new FolderHelper(settings.TempDirectory);
+IFoldersHelper folderHelper = new FoldersHelper(settings.TempDirectory);
 
-/*
-using (IFileSorting file = new TextFileLinePositions(srcFile))  // src file
-using (var writer = new WriteToFile("sorted.txt"))              // output file
-{
-
-    IOutputWriter processor = new WriterProcessor(file);
-    processor.SortingAndWriteToOutput(writer);
-}*/
-
-
-// full :
-//IFileSplitter splitter = new FileSplitter(srcFile, settings);
-//splitter.Split();
-
-//ISortAndMergeFiles mergeAndSort = new SortAndMergeFiles(splitter, settings);
-//mergeAndSort.Sort();
-
-//Console.WriteLine($"Max lines {splitter.MaxLinesCount}");
 
 //step 1:  split
 IFileSplitterLexicon splitter = new FileSplitterLexicon(srcFile, folderHelper);
@@ -83,14 +30,19 @@ splitter.SplitWithInfo();
 
 
 //step 2: sorting & merge blocks
-var processor = new SortAndMergeTextBlocks(splitter, folderHelper);
+ISortAndMergeTextBlocks processor = new SortAndMergeTextBlocks(splitter, folderHelper);
 processor.Process();
 
 
-// todo: mergeresults:
+// mergeresults:
 Console.WriteLine("Finish Merging ....");
-Utils.MergeFiles(FolderHelper.GetResultSortedNameFile(srcFile), splitter.GetIndexs.OrderBy(x => x), folderHelper);
 
+Utils.MergeFiles(FoldersHelper.GetResultSortedNameFile(srcFile), splitter.GetIndexs.OrderBy(x => x), folderHelper);
+
+//!! to do: chunks removes
+//Utils.ClearFolder(folderHelper.ChunksFolder);
+
+Console.WriteLine("Finish Merging .... Ok");
 stopwatch.Stop();
 
 Console.WriteLine($"Время выполнения: {stopwatch.ElapsedMilliseconds} миллисекунд");
@@ -102,8 +54,6 @@ ts.Minutes, ts.Seconds, ts.Milliseconds / 10);
 
 // Вывод времени выполнения
 Console.WriteLine($"Время выполнения: {elapsedTime} минут");
-
-
 
 
 Console.WriteLine("Нажмите любую клавишу для выхода...");

@@ -1,4 +1,4 @@
-﻿namespace SortTextFile;
+﻿namespace SortTextFile.Configuration;
 
 internal sealed class SplitterOptions
 {
