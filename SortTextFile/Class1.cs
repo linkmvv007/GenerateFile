@@ -1,32 +1,23 @@
 ﻿using SortTextFile;
 using SortTextFile.Interfaces;
-using System.IO.MemoryMappedFiles;
+using System.Text;
 
 internal sealed class SortAndMergeTextBlocks
 {
-    const int blockSize = 10000; // Количество строк в блоке
-                                 // private readonly string _destFile;
-    private readonly string _chunksFolder;
-    private readonly string _resultFolder;
-    private readonly SplitterOptions _options;
+    const int blockSize = 1000; // Количество строк в блоке
+
+    private readonly FolderHelper _folderHelper;
     private readonly IFileSplitterLexicon _splitter;
-    internal SortAndMergeTextBlocks(IFileSplitterLexicon splitter, SplitterOptions options)
+    internal SortAndMergeTextBlocks(IFileSplitterLexicon splitter, FolderHelper folderHelper)
     {
         _splitter = splitter;
-        // _destFile = destFile; //sortedfile.txt"
-        _options = options;
-        _chunksFolder = Path.Combine(_options.TempDirectory, "chunks");
-
-        _resultFolder = Path.Combine(_chunksFolder, "Results");
-        Directory.CreateDirectory(_resultFolder);
+        _folderHelper = folderHelper;
     }
 
     internal void Process()
     {
-        //var files = _splitter.GetIndexs;
-        var files = new HashSet<string>() { "c:\\Users\\Dell\\source\\repos\\3deye\\GenerateFile\\SortTextFile\\bin\\Release\\net8.0\\Temp\\BookIndex\\aban" };
+        var files = _splitter.GetIndexs;
 
-        var indexPath = _splitter.IndexFolder;
         foreach (var file in files)
         {
             GetBlocksAndSort(file);
@@ -37,64 +28,102 @@ internal sealed class SortAndMergeTextBlocks
     /// source file
     /// </summary>
     /// <param name="fileName"></param>
-    private void GetBlocksAndSort(string srcFullName)
+    private void GetBlocksAndSort(string fileName)
     {
-        //var tasks = new List<Task>();
         int blockIndex = 0;
 
-        using (var mmf = MemoryMappedFile.CreateFromFile(srcFullName, FileMode.Open, "MMF"))
-        using (var stream = mmf.CreateViewStream())
-        using (var reader = new StreamReader(stream))
+        //using (var mmf = MemoryMappedFile.CreateFromFile(_folderHelper.GetBookIndexFile(fileName), FileMode.Open, "MMF"))
+        //using (var stream = mmf.CreateViewStream())
+        //using (var reader = new StreamReader(stream))
+        using (var fs = new FileStream(_folderHelper.GetBookIndexFile(Utils.FixFileName(fileName)), FileMode.Open, FileAccess.Read))
+        using (var reader = new StreamReader(fs, Encoding.UTF8, true, 10 * 1024 * 1024)) // Чтение блоками по 1 МБ
         {
-            var lineList = new List<string>();
+            var lineList = new List<string>(capacity: blockSize);
             string line;
 
-            while ((line = reader.ReadLine()) != null && line[0] != '\0')
+            // while ((line = reader.ReadLine()) != null && line[0] != '\0')
+            while ((line = reader.ReadLine()) != null)
             {
                 lineList.Add(line);
 
                 if (lineList.Count >= blockSize)
                 {
-                    SortAndSaveBlock(lineList, _chunksFolder, blockIndex++);
-                    //tasks.Add(Task.Run(() => SortAndSaveBlock(new List<string>(lineList), _tempFolder, blockIndex++)));
+                    SortAndSaveBlock(lineList, blockIndex++, fileName);
                     lineList.Clear();
                 }
             }
 
             if (lineList.Count > 0)
             {
-                SortAndSaveBlock(lineList, _chunksFolder, blockIndex);
-                //tasks.Add(Task.Run(() => SortAndSaveBlock(lineList, _tempFolder, blockIndex)));
+                SortAndSaveBlock(lineList, blockIndex, fileName);
             }
-
-
         }
 
-        //Task.WaitAll(tasks.ToArray());
-
-        MergeSortedFiles(Path.Combine(_resultFolder, Path.GetFileName(srcFullName)), blockIndex); //todo
+        MergeSortedFiles(fileName, blockIndex);
     }
 
-    static void SortAndSaveBlock(List<string> block, string tempDirectory, int blockIndex)
+    void SortAndSaveBlock(List<string> block, int blockIndex, string fileName)
     {
-        block.Sort((x, y) => TextFileLinePositions.CompareFunc(x, y));
+        block.Sort((x, y) => CompareFunc(x, y));
 
-        File.WriteAllLines(Path.Combine(tempDirectory, $"chunk{blockIndex}.ind"), block);
+        File.WriteAllLines(_folderHelper.GetChunkFullNameFile(fileName, blockIndex), block);
+    }
+    internal static int CompareFunc(string x, string y)
+    {
+        ReadOnlySpan<char> xSpan, xTextPart;
+        int xDotIndex;
+        GetStringKey(x, out xSpan, out xDotIndex, out xTextPart);
+
+        ReadOnlySpan<char> ySpan, yTextPart;
+        int yDotIndex;
+        GetStringKey(y, out ySpan, out yDotIndex, out yTextPart);
+
+        int textComparison = xTextPart.CompareTo(yTextPart, StringComparison.Ordinal);
+        if (textComparison != 0)
+        {
+            return textComparison;
+        }
+
+        long xNumber = GetNumber(xSpan, xDotIndex);
+        long yNumber = GetNumber(ySpan, yDotIndex);
+
+        return (xNumber == yNumber) ? 0 : (xNumber > yNumber ? 1 : -1);
+    }
+    private static long GetNumber(ReadOnlySpan<char> xSpan, int xDotIndex) =>
+        long.Parse(xSpan[..xDotIndex]);
+
+    private static void GetStringKey(string x, out ReadOnlySpan<char> xSpan, out int xDotIndex, out ReadOnlySpan<char> xTextPart)
+    {
+        xSpan = x.AsSpan();
+        xDotIndex = xSpan.IndexOf('.');
+        xTextPart = xSpan[(xDotIndex + 1)..];
     }
 
-    void MergeSortedFiles(string outputPath, int blockIndex)
+    void MergeSortedFiles(string fileName, int blockIndex)
     {
-        var readers = Enumerable.Range(0, blockIndex + 1)
-            .Select(f => new StreamReader(Path.Combine(_chunksFolder, $"chunk{f}.ind")))
-            .ToList();
+        if (blockIndex < 1)
+        {
+            // already sorted => move to the results folder
+            File.Move(
+                _folderHelper.GetChunkFullNameFile(fileName, blockIndex),
+                _folderHelper.GetSortedChunkFullNameFile(fileName)
+                );
+
+            return;
+        }
+        var readers = new StreamReader[blockIndex + 1];
+        for (int i = 0; i <= blockIndex; i++)
+        {
+            readers[i] = new StreamReader(_folderHelper.GetChunkFullNameFile(fileName, i));
+        }
 
         try
         {
-            using var output = new StreamWriter(outputPath);
+            using var output = new StreamWriter(_folderHelper.GetSortedChunkFullNameFile(fileName));
 
             var queue = new SortedDictionary<string, Queue<int>>(new CustomComparer());
 
-            for (int i = 0; i < readers.Count; i++)
+            for (int i = 0; i < readers.Length; i++)
             {
                 if (!readers[i].EndOfStream)
                 {
@@ -110,10 +139,10 @@ internal sealed class SortAndMergeTextBlocks
             while (queue.Count > 0)
             {
                 var kvp = queue.First();
-                string line = kvp.Key;                  //строка
-                Queue<int> fileIndices = kvp.Value;  //  очередь
+                string line = kvp.Key;                  //line
+                Queue<int> fileIndices = kvp.Value;  //  queue
 
-                // Записываем строку столько раз, сколько раз она встречается
+                // We write the lines as many times as it occurs
                 while (fileIndices.Count > 0)
                 {
                     output.WriteLine(line);
@@ -121,11 +150,11 @@ internal sealed class SortAndMergeTextBlocks
 
                     if (!readers[streamIndex].EndOfStream)
                     {
-                        string? newLine = readers[streamIndex].ReadLine(); // читаем
+                        string? newLine = readers[streamIndex].ReadLine(); // reading the line
 
                         if (newLine == line)
                         {
-                            fileIndices.Enqueue(streamIndex); // если совпадает - добавляем опять в очередь
+                            fileIndices.Enqueue(streamIndex); // If it matches, we add it back to the queue
                         }
                         else
                         {
@@ -144,7 +173,12 @@ internal sealed class SortAndMergeTextBlocks
         }
         finally
         {
-            readers.ForEach(x => x?.Dispose());
+            for (int i = 0; i <= blockIndex; i++)
+            {
+                readers[i]?.Dispose();
+                Utils.DeleteFile(_folderHelper.GetChunkFullNameFile(fileName, i));
+            }
+
         }
     }
 }

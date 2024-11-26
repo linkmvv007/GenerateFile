@@ -36,7 +36,7 @@ internal sealed class SortAndMergeFiles : ISortAndMergeFiles
        $"chunk_{fileIndex}";
 
     private string GetChunkFullNameFile(long fileIndex) =>
-  Path.Combine(_options.TempDirectory, $"{GetChunkNameFile(fileIndex)}.ind");
+        Path.Combine(_options.TempDirectory, $"{GetChunkNameFile(fileIndex)}.ind");
 
     private string GetSortedChunkFullNameFile(long fileIndex) =>
        $"{GetChunkFullNameFile(fileIndex)}.sorted";
@@ -254,28 +254,6 @@ internal sealed class SortAndMergeFiles : ISortAndMergeFiles
 
         Console.WriteLine($"{sortedChunks.Count} chuks files  merging ...Ok");
     }
-
-
-
-    //internal static void MergeFiles(IReadOnlyList<string> files, string outputFile)
-    //{
-    //    using (var fs = new FileStream(outputFile, FileMode.Create, FileAccess.Write))
-    //    using (var writer = new StreamWriter(new BufferedStream(fs)))
-    //    {
-    //        foreach (string file in files)
-    //        {
-    //            using (var fsr = new FileStream(file, FileMode.Open, FileAccess.Read))
-    //            using (var reader = new StreamReader(fsr))
-    //            {
-    //                string line;
-    //                while ((line = reader.ReadLine()) != null)
-    //                {
-    //                    writer.WriteLine(line);
-    //                }
-    //            }
-    //        }
-    //    }
-    //}
 }
 
 internal class CustomComparer : IComparer<string>

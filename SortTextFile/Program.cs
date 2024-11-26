@@ -6,8 +6,9 @@ using System.Diagnostics;
 Console.WriteLine("Hello, World!");
 
 
-const string srcFile = "c:\\Users\\Dell\\source\\repos\\3deye\\GenerateFile\\GenerateFile\\bin\\Debug\\net8.0\\output2Gb.txt";
-//const string srcFile = "c:\\Users\\Dell\\source\\repos\\3deye\\GenerateFile\\GenerateFile\\bin\\Debug\\net8.0\\output.txt";
+//const string srcFile = "c:\\Users\\Dell\\source\\repos\\3deye\\GenerateFile\\GenerateFile\\bin\\Debug\\net8.0\\output2Gb.txt";
+//const string srcFile = "c:\\Users\\Dell\\source\\repos\\3deye\\GenerateFile\\GenerateFile\\bin\\Debug\\net8.0\\output!.txt";
+const string srcFile = "c:\\Users\\Dell\\source\\repos\\3deye\\GenerateFile\\GenerateFile\\bin\\Debug\\net8.0\\output.txt";
 //const string srcFile = "c:\\Users\\Dell\\source\\repos\\3deye\\GenerateFile\\GenerateFile\\bin\\Debug\\net8.0\\output20mb.txt";
 //const string srcFile = "c:\\Users\\Dell\\source\\repos\\3deye\\GenerateFile\\GenerateFile\\bin\\Debug\\net8.0\\test.txt";
 //const string srcFile = "c:\\Users\\Dell\\source\\repos\\3deye\\GenerateFile\\GenerateFile\\bin\\Debug\\net8.0\\output1.txt";
@@ -54,8 +55,8 @@ stopwatch.Start();
 //    file.MakeDictionary();
 //}
 
-
 var settings = Configuration.ReadConfig();
+var folderHelper = new FolderHelper(settings.TempDirectory);
 
 /*
 using (IFileSorting file = new TextFileLinePositions(srcFile))  // src file
@@ -77,13 +78,18 @@ using (var writer = new WriteToFile("sorted.txt"))              // output file
 //Console.WriteLine($"Max lines {splitter.MaxLinesCount}");
 
 //step 1:  split
-IFileSplitterLexicon splitter = new FileSplitterLexicon(srcFile, settings);
-//splitter.SplitWithInfo();
+IFileSplitterLexicon splitter = new FileSplitterLexicon(srcFile, folderHelper);
+splitter.SplitWithInfo();
+
 
 //step 2: sorting & merge blocks
-var processor = new SortAndMergeTextBlocks(splitter, settings);
+var processor = new SortAndMergeTextBlocks(splitter, folderHelper);
 processor.Process();
 
+
+// todo: mergeresults:
+Console.WriteLine("Finish Merging ....");
+Utils.MergeFiles(FolderHelper.GetResultSortedNameFile(srcFile), splitter.GetIndexs.OrderBy(x => x), folderHelper);
 
 stopwatch.Stop();
 

@@ -9,30 +9,23 @@ namespace SortTextFile;
 /// </summary>
 internal sealed class FileSplitterLexicon : IFileSplitterLexicon
 {
+    const long BufferSize = 1000000L;
     private readonly string _fileName;
     private readonly Dictionary<string, List<string>> _indexFileNames = new(capacity: 26 * 33 + 2);
-    private readonly SplitterOptions _options;
-    private readonly string _indexFolder;
-
-    internal FileSplitterLexicon(string fileName, SplitterOptions options)
+    private readonly FolderHelper _folderHelper;
+    internal FileSplitterLexicon(string fileName, FolderHelper folderHelper)
     {
         _fileName = fileName;
-        _options = options;
-
-        _indexFolder = Path.Combine(_options.TempDirectory, "BookIndex");
-        Directory.CreateDirectory(_indexFolder);
-
-        //todo:  Utils.DeleteFile(_indexFolder);
+        _folderHelper = folderHelper;
     }
 
-    string IFileSplitterLexicon.IndexFolder => _indexFolder;
     HashSet<string> IFileSplitterLexicon.GetIndexs => _indexFileNames.Keys.ToHashSet();
 
     void IFileSplitterLexicon.SplitWithInfo()
     {
         Console.WriteLine("Сreating index files...");
+        //todo:progress bar
         var counter = 0L;
-        //long maxCount = 0;
 
         using (var mmf = MemoryMappedFile.CreateFromFile(_fileName, FileMode.Open, "MMF")) // Создание отображенного в память файла
         using (var stream = mmf.CreateViewStream())// Создание представления для чтения файла
@@ -47,25 +40,32 @@ internal sealed class FileSplitterLexicon : IFileSplitterLexicon
             //while ((line = sr.ReadLine()) != null)
             {
                 name = GetNameIndexFile(line);
+                //if (name == "axe ")
+                //{
+                //    Console.WriteLine($"{line}");
+                //}
+                //else
+                //{
+                //    if (name == "axe")
+                //        Console.WriteLine($"{line}");
+                //}
+
 
                 if (!_indexFileNames.ContainsKey(name))
                 {
+
                     _indexFileNames.Add(name, new List<string>(capacity: 39 * 1024) { line });
                 }
                 else
                 {
                     var item = _indexFileNames[name];
                     item.Add(line);
-                    //if (maxCount < item.Count)
-                    //    maxCount = item.Count;
                 }
 
                 counter++;
-                if (counter > 1000000)
+                if (counter > BufferSize)
                 {
                     AppendBufferTextToFile();
-                    //Console.WriteLine($"maxCount: {maxCount}");
-                    //maxCount = 
                     counter = 0;
                 }
             }
@@ -74,12 +74,12 @@ internal sealed class FileSplitterLexicon : IFileSplitterLexicon
         if (counter > 0L)
         {
             AppendBufferTextToFile();
-
-            counter = 0;
+            // counter = 0;
         }
 
         Console.WriteLine("Сreating index files... Ok");
     }
+
 
     private static string GetNameIndexFile(string line)
     {
@@ -87,13 +87,13 @@ internal sealed class FileSplitterLexicon : IFileSplitterLexicon
         int xDotIndex;
         GetStringKey(line, out xSpan, out xDotIndex, out xTextPart);
 
-        var result = GetLetter(xTextPart.Slice(0, 1));
+        var result = GetLetter(xTextPart[0..1]);
 
         return xTextPart.Length switch
         {
-            > 3 => result + GetLetter(xTextPart.Slice(1, 3)),
-            > 2 => result + GetLetter(xTextPart.Slice(1, 2)),
-            > 1 => result + GetLetter(xTextPart.Slice(1, 1)),
+            > 3 => result + GetLetter(xTextPart[1..2]) + GetLetter(xTextPart[2..3]) + GetLetter(xTextPart[3..4]),
+            > 2 => result + GetLetter(xTextPart[1..2]) + GetLetter(xTextPart[2..3]),
+            > 1 => result + GetLetter(xTextPart[1..2]),
             _ => result
         };
     }
@@ -103,11 +103,10 @@ internal sealed class FileSplitterLexicon : IFileSplitterLexicon
         return ch[0] switch
         {
             char c when Char.IsLetterOrDigit(c) => ch.ToString(),
-            char c when c < 'A' => "!",
+            char c when c < '0' => "!",
             _ => "~"
         };
     }
-
 
     private static void GetStringKey(string x, out ReadOnlySpan<char> xSpan, out int xDotIndex, out ReadOnlySpan<char> xTextPart)
     {
@@ -127,20 +126,13 @@ internal sealed class FileSplitterLexicon : IFileSplitterLexicon
         xTextPart = xSpan.Slice(xDotIndex + 1);
     }
 
-    //private static void AppendTextToFile(string filePath, string text)
-    //{
-    //    using (StreamWriter sw = File.AppendText(filePath))
-    //    {
-    //        sw.WriteLine(text);
-    //    }
-    //}
     private void AppendBufferTextToFile()
     {
         foreach (var item in _indexFileNames)
         {
             if (item.Value?.Count > 0)
             {
-                var filePath = Path.Combine(_indexFolder, item.Key);
+                var filePath = Path.Combine(_folderHelper.BookIndexFolder, Utils.FixFileName(item.Key));
                 using (StreamWriter sw = File.AppendText(filePath))
                 {
                     foreach (var line in item.Value)

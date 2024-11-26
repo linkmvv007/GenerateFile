@@ -19,12 +19,6 @@ internal class Configuration
             throw new ArgumentNullException($"Error readind configuration in {nameof(settings)}. Check optionn in the appsetting.json");
         }
 
-        if (string.IsNullOrWhiteSpace(settings.TempDirectory))
-        {
-            settings.TempDirectory = Path.Combine(Directory.GetCurrentDirectory(), "Temp");
-            Directory.CreateDirectory(settings.TempDirectory);
-        }
-
         return settings;
     }
 }
