@@ -76,9 +76,8 @@ internal sealed class SortAndMergeFiles : ISortAndMergeFiles
 
     record MergeInfo(string line, int nReader);
 
-    static void MergeSortedChunks(IReadOnlyList<string> sortedChunks, string outputFile)
+    static void MergeSortedChunksDraft(IReadOnlyList<string> sortedChunks, string outputFile)
     {
-
         Console.WriteLine($"{sortedChunks.Count} chuks files  merging to {outputFile} ...");
 
         var progress = 0L;
@@ -111,7 +110,6 @@ internal sealed class SortAndMergeFiles : ISortAndMergeFiles
                     {
                         Console.WriteLine($"{progress} lines are merged ...");
                         progress = 0;
-
                     }
 
                     buffer.Sort((x, y) => SortMethod(x, y));
@@ -168,24 +166,120 @@ internal sealed class SortAndMergeFiles : ISortAndMergeFiles
     private static int SortMethod(MergeInfo x, MergeInfo y) =>
         TextFileLinePositions.CompareFunc(x.line, y.line);
 
-
-    internal static void MergeFiles(IReadOnlyList<string> files, string outputFile)
+    static void MergeSortedChunks(IReadOnlyList<string> sortedChunks, string outputFile)
     {
-        using (var fs = new FileStream(outputFile, FileMode.Create, FileAccess.Write))
-        using (var writer = new StreamWriter(new BufferedStream(fs)))
+        Console.WriteLine($"{sortedChunks.Count} chuks files  merging to {outputFile} ...");
+
+        var progress = 0L;
+
+        var readers = new List<StreamReader>();
+        foreach (string chunk in sortedChunks)
         {
-            foreach (string file in files)
+            readers.Add(new StreamReader(chunk));
+        }
+
+        try
+        {
+            using (var sw = new StreamWriter(outputFile))
             {
-                using (var fsr = new FileStream(file, FileMode.Open, FileAccess.Read))
-                using (var reader = new StreamReader(fsr))
+                var queue = new SortedDictionary<string, Queue<int>>(new CustomComparer());
+
+                for (int i = 0; i < readers.Count; i++)
                 {
-                    string line;
-                    while ((line = reader.ReadLine()) != null)
+                    if (!readers[i].EndOfStream)
                     {
-                        writer.WriteLine(line);
+                        string line = readers[i].ReadLine();
+                        if (!queue.ContainsKey(line))
+                        {
+                            queue[line] = new Queue<int>();
+                        }
+                        queue[line].Enqueue(i);  // строка в какой очереди находится
                     }
                 }
+
+                while (queue.Count > 0)
+                {
+                    progress++;
+                    if (progress > 10000)
+                    {
+                        Console.WriteLine($"{progress} lines are merged ...");
+                        progress = 0;
+                    }
+
+                    var kvp = queue.First();
+                    string line = kvp.Key;                  //строка
+                    Queue<int> fileIndices = kvp.Value;  //  очередь
+
+                    // Записываем строку столько раз, сколько раз она встречается
+                    while (fileIndices.Count > 0)
+                    {
+                        sw.WriteLine(line);
+                        int streamIndex = fileIndices.Dequeue();
+
+                        if (!readers[streamIndex].EndOfStream)
+                        {
+                            string? newLine = readers[streamIndex].ReadLine(); // читаем
+
+                            if (newLine == line)
+                            {
+                                fileIndices.Enqueue(streamIndex); // если совпадает - добавляем опять в очередь
+                            }
+                            else
+                            {
+                                if (!queue.ContainsKey(newLine))
+                                {
+                                    queue[newLine] = new Queue<int>();
+                                }
+
+                                queue[newLine].Enqueue(streamIndex);
+                            }
+                        }
+                    }
+
+                    queue.Remove(line);
+                }
+
             }
         }
+        finally
+        {
+            foreach (var reader in readers)
+            {
+                reader?.Dispose();
+            }
+
+            // removed sorted chunks files:
+            Utils.DeleteFiles(sortedChunks);
+        }
+
+        Console.WriteLine($"{sortedChunks.Count} chuks files  merging ...Ok");
     }
+
+
+
+    //internal static void MergeFiles(IReadOnlyList<string> files, string outputFile)
+    //{
+    //    using (var fs = new FileStream(outputFile, FileMode.Create, FileAccess.Write))
+    //    using (var writer = new StreamWriter(new BufferedStream(fs)))
+    //    {
+    //        foreach (string file in files)
+    //        {
+    //            using (var fsr = new FileStream(file, FileMode.Open, FileAccess.Read))
+    //            using (var reader = new StreamReader(fsr))
+    //            {
+    //                string line;
+    //                while ((line = reader.ReadLine()) != null)
+    //                {
+    //                    writer.WriteLine(line);
+    //                }
+    //            }
+    //        }
+    //    }
+    //}
+}
+
+internal class CustomComparer : IComparer<string>
+{
+    public int Compare(string? x, string? y) => TextFileLinePositions.CompareFunc(x, y);
+
 }

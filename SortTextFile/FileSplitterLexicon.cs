@@ -1,4 +1,5 @@
 ﻿using SortTextFile.Interfaces;
+using System.IO.MemoryMappedFiles;
 using System.Text;
 
 namespace SortTextFile;
@@ -9,45 +10,75 @@ namespace SortTextFile;
 internal sealed class FileSplitterLexicon : IFileSplitterLexicon
 {
     private readonly string _fileName;
-
-    private readonly HashSet<string> _indexFileNames = new(capacity: 26 * 33 + 2);
+    private readonly Dictionary<string, List<string>> _indexFileNames = new(capacity: 26 * 33 + 2);
     private readonly SplitterOptions _options;
-    private readonly string _tempFolder;
+    private readonly string _indexFolder;
 
     internal FileSplitterLexicon(string fileName, SplitterOptions options)
     {
         _fileName = fileName;
         _options = options;
 
-        _tempFolder = Path.Combine(_options.TempDirectory, "BookIndex");
-        Directory.CreateDirectory(_tempFolder);
+        _indexFolder = Path.Combine(_options.TempDirectory, "BookIndex");
+        Directory.CreateDirectory(_indexFolder);
+
+        //todo:  Utils.DeleteFile(_indexFolder);
     }
+
+    string IFileSplitterLexicon.IndexFolder => _indexFolder;
+    HashSet<string> IFileSplitterLexicon.GetIndexs => _indexFileNames.Keys.ToHashSet();
 
     void IFileSplitterLexicon.SplitWithInfo()
     {
-        Console.WriteLine("Сreating files...");
+        Console.WriteLine("Сreating index files...");
+        var counter = 0L;
+        //long maxCount = 0;
 
-        using (var fs = new FileStream(_fileName, FileMode.Open, FileAccess.Read))
-        using (var sr = new StreamReader(fs, Encoding.UTF8, true, 10 * 1024 * 1024)) // Reading in blocks of 10 MB
+        using (var mmf = MemoryMappedFile.CreateFromFile(_fileName, FileMode.Open, "MMF")) // Создание отображенного в память файла
+        using (var stream = mmf.CreateViewStream())// Создание представления для чтения файла
+        using (var sr = new StreamReader(stream, Encoding.UTF8))
+        //using (var fs = new FileStream(_fileName, FileMode.Open, FileAccess.Read))
+        //using (var sr = new StreamReader(fs, Encoding.UTF8, true, 100 * 1024 * 1024)) // Reading in blocks of 100 MB (44sec - 2Gb)
         {
             string? line;
             string name;
 
-            while ((line = sr.ReadLine()) != null)
+            while ((line = sr.ReadLine()) != null && line[0] != '\0')
+            //while ((line = sr.ReadLine()) != null)
             {
                 name = GetNameIndexFile(line);
 
-                if (!_indexFileNames.Contains(name))
+                if (!_indexFileNames.ContainsKey(name))
                 {
-                    _indexFileNames.Add(name);
+                    _indexFileNames.Add(name, new List<string>(capacity: 39 * 1024) { line });
+                }
+                else
+                {
+                    var item = _indexFileNames[name];
+                    item.Add(line);
+                    //if (maxCount < item.Count)
+                    //    maxCount = item.Count;
                 }
 
-                AppendTextToFile(name, line);
+                counter++;
+                if (counter > 1000000)
+                {
+                    AppendBufferTextToFile();
+                    //Console.WriteLine($"maxCount: {maxCount}");
+                    //maxCount = 
+                    counter = 0;
+                }
             }
         }
 
+        if (counter > 0L)
+        {
+            AppendBufferTextToFile();
 
-        Console.WriteLine("Сreating files... Ok");
+            counter = 0;
+        }
+
+        Console.WriteLine("Сreating index files... Ok");
     }
 
     private static string GetNameIndexFile(string line)
@@ -60,7 +91,9 @@ internal sealed class FileSplitterLexicon : IFileSplitterLexicon
 
         return xTextPart.Length switch
         {
-            >= 2 => result + GetLetter(xTextPart.Slice(1, 1)),
+            > 3 => result + GetLetter(xTextPart.Slice(1, 3)),
+            > 2 => result + GetLetter(xTextPart.Slice(1, 2)),
+            > 1 => result + GetLetter(xTextPart.Slice(1, 1)),
             _ => result
         };
     }
@@ -94,46 +127,30 @@ internal sealed class FileSplitterLexicon : IFileSplitterLexicon
         xTextPart = xSpan.Slice(xDotIndex + 1);
     }
 
-    private static void AppendTextToFile(string filePath, string text)
+    //private static void AppendTextToFile(string filePath, string text)
+    //{
+    //    using (StreamWriter sw = File.AppendText(filePath))
+    //    {
+    //        sw.WriteLine(text);
+    //    }
+    //}
+    private void AppendBufferTextToFile()
     {
-        using (StreamWriter sw = File.AppendText(filePath))
+        foreach (var item in _indexFileNames)
         {
-            sw.WriteLine(text);
+            if (item.Value?.Count > 0)
+            {
+                var filePath = Path.Combine(_indexFolder, item.Key);
+                using (StreamWriter sw = File.AppendText(filePath))
+                {
+                    foreach (var line in item.Value)
+                    {
+                        sw.WriteLine(line);
+                    }
+                }
+
+                item.Value.Clear();
+            }
         }
     }
-    /*
-        private void GetLinePositions(bool analys = false)
-        {
-            Console.WriteLine("Analysis...");
-
-            using (var fs = new FileStream(_fileName, FileMode.Open, FileAccess.Read))
-            using (StreamReader sr = new StreamReader(fs, Encoding.UTF8, true, 10 * 1024 * 1024)) // Чтение блоками по 10 МБ
-            {
-                long position = 0;
-                string line;
-                while ((line = sr.ReadLine()) != null)
-                {
-
-                    //var name = AnalyzeLine(line);
-
-                    position += line.Length + Environment.NewLine.Length;
-                }
-            }
-
-            Console.WriteLine("Analysis... Ok");
-
-        }
-
-
-        static ReadOnlySpan<char> ExtractSubstringFromPosition(ReadOnlySpan<char> span, int position, int length)
-        {
-            if (position < 0 || position >= span.Length)
-                throw new ArgumentOutOfRangeException(nameof(position));
-
-            int end = position + length;
-            if (end > span.Length)
-                end = span.Length;
-
-            return span.Slice(position, end - position);
-        }*/
 }

@@ -104,7 +104,7 @@ internal sealed class TextFileLinePositions : IFileSorting
         return CompareFunc(x, y);
     }
 
-    internal static int CompareFunc(string x, string y)
+    internal static int CompareFunc(string? x, string? y)
     {
         ReadOnlySpan<char> xSpan, xTextPart;
         int xDotIndex;

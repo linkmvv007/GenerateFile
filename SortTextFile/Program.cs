@@ -67,15 +67,23 @@ using (var writer = new WriteToFile("sorted.txt"))              // output file
 }*/
 
 
+// full :
+//IFileSplitter splitter = new FileSplitter(srcFile, settings);
+//splitter.Split();
 
-IFileSplitter splitter = new FileSplitter(srcFile, settings);
-splitter.Split();
+//ISortAndMergeFiles mergeAndSort = new SortAndMergeFiles(splitter, settings);
+//mergeAndSort.Sort();
 
-ISortAndMergeFiles mergeAndSort = new SortAndMergeFiles(splitter, settings);
-mergeAndSort.Sort();
+//Console.WriteLine($"Max lines {splitter.MaxLinesCount}");
 
+//step 1:  split
+IFileSplitterLexicon splitter = new FileSplitterLexicon(srcFile, settings);
+//splitter.SplitWithInfo();
 
-Console.WriteLine($"Max lines {splitter.MaxLinesCount}");
+//step 2: sorting & merge blocks
+var processor = new SortAndMergeTextBlocks(splitter, settings);
+processor.Process();
+
 
 stopwatch.Stop();
 
