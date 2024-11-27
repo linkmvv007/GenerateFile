@@ -19,7 +19,7 @@ internal class Utils
         }
     }
 
-    internal static void MergeFiles(string destFileName, IOrderedEnumerable<string> srcFileNames, IFoldersHelper helper)
+    internal static void MergeFiles(string destFileName, IOrderedEnumerable<string> srcFileNames, IFoldersHelper helper, bool isDeleteFiles = false)
     {
         using (var destStream = File.OpenWrite(destFileName))
         {
@@ -32,12 +32,10 @@ internal class Utils
                     srcStream.CopyTo(destStream);
                 }
 
-                //!! to do: removed block files sorted 
-                // Utils.DeleteFile(srcFileName);
+                if (isDeleteFiles)
+                    Utils.DeleteFile(srcFileName);
             }
         }
-
-
     }
 
     internal static void ClearFolder(string path, bool recursive = true)

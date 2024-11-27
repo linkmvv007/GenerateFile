@@ -7,14 +7,14 @@ using System.Diagnostics;
 Console.WriteLine("Hello, World!");
 
 
+//100L * 1024 * 1024 * 1024; // 100 ГБ в байтах  => 107374182400
+
 //const string srcFile = "c:\\Users\\Dell\\source\\repos\\3deye\\GenerateFile\\GenerateFile\\bin\\Debug\\net8.0\\output2Gb.txt";
 //const string srcFile = "c:\\Users\\Dell\\source\\repos\\3deye\\GenerateFile\\GenerateFile\\bin\\Debug\\net8.0\\output!.txt";
 const string srcFile = "c:\\Users\\Dell\\source\\repos\\3deye\\GenerateFile\\GenerateFile\\bin\\Debug\\net8.0\\output.txt";
 //const string srcFile = "c:\\Users\\Dell\\source\\repos\\3deye\\GenerateFile\\GenerateFile\\bin\\Debug\\net8.0\\output20mb.txt";
 //const string srcFile = "c:\\Users\\Dell\\source\\repos\\3deye\\GenerateFile\\GenerateFile\\bin\\Debug\\net8.0\\test.txt";
 //const string srcFile = "c:\\Users\\Dell\\source\\repos\\3deye\\GenerateFile\\GenerateFile\\bin\\Debug\\net8.0\\output1.txt";
-
-
 
 Stopwatch stopwatch = new Stopwatch();
 stopwatch.Start();
@@ -25,7 +25,7 @@ IFoldersHelper folderHelper = new FoldersHelper(settings.TempDirectory);
 
 
 //step 1:  split
-IFileSplitterLexicon splitter = new FileSplitterLexicon(srcFile, folderHelper);
+IFileSplitterLexicon splitter = new FileSplitterLexicon(srcFile, folderHelper, settings.LengthBookIndex);
 splitter.SplitWithInfo();
 
 
@@ -37,12 +37,24 @@ processor.Process();
 // mergeresults:
 Console.WriteLine("Finish Merging ....");
 
-Utils.MergeFiles(FoldersHelper.GetResultSortedNameFile(srcFile), splitter.GetIndexs.OrderBy(x => x), folderHelper);
+Utils.MergeFiles(
+    FoldersHelper.GetResultSortedNameFile(srcFile)
+    , splitter.GetIndexs.OrderBy(x => x)
+    , folderHelper
+    , settings.IsDeleteFile);
 
-//!! to do: chunks removes
-//Utils.ClearFolder(folderHelper.ChunksFolder);
+//chunks removes
+if (settings.IsDeleteFile)
+{
+    Utils.ClearFolder(folderHelper.ChunksFolder);
+}
 
 Console.WriteLine("Finish Merging .... Ok");
+
+Console.WriteLine($"The number of rows is not in the format: {splitter.ErrorsCount}");
+Console.WriteLine($"See file : {folderHelper.GetBadFormatLinesNameFile(srcFile)}");
+
+
 stopwatch.Stop();
 
 Console.WriteLine($"Время выполнения: {stopwatch.ElapsedMilliseconds} миллисекунд");

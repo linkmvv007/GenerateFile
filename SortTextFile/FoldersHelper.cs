@@ -61,6 +61,8 @@ internal class FoldersHelper : IFoldersHelper
 
     string IFoldersHelper.GetBookIndexFile(string fileName) => Path.Combine(_bookIndexFolder, fileName);
 
+    string IFoldersHelper.GetBadFormatLinesNameFile(string fileName) => $"{fileName}.err";
+
     #endregion
 
     internal static string GetResultSortedNameFile(string srcFileName) =>

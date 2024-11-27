@@ -10,4 +10,5 @@ internal interface IFoldersHelper
     string GetSortedChunkFullNameFile(string srcFileName);
     string GetSortedFileFolder(string fileName);
     string GetBookIndexFile(string fileName);
+    string GetBadFormatLinesNameFile(string fileName);
 }
