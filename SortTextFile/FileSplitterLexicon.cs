@@ -11,7 +11,7 @@ internal sealed class FileSplitterLexicon : IFileSplitterLexicon
 {
     private static int _maxBookIndexLength = 4;
 
-    const long BufferSize = 1000000L;
+    const long BufferSize = 10_000_000L; // 10млн строк
 
     private readonly string _fileName;
     private readonly Dictionary<string, List<string>> _indexFileNames = new(capacity: 26 * 33 + 2); // letters of the Russian and English alphabets
@@ -33,7 +33,9 @@ internal sealed class FileSplitterLexicon : IFileSplitterLexicon
     void IFileSplitterLexicon.SplitWithInfo()
     {
         Console.WriteLine("Сreating index files...");
-        //todo:progress bar
+
+        var progress = 0L;
+
         var counter = 0L;
         bool errors;
 
@@ -72,6 +74,8 @@ internal sealed class FileSplitterLexicon : IFileSplitterLexicon
                 {
                     AppendBufferTextToFile();
                     counter = 0;
+
+                    Console.Write($"\r{(++progress * BufferSize).ToString("N0")} lines ");
                 }
             }
         }
