@@ -32,7 +32,7 @@ splitter.SplitWithInfo();
 
 
 //step 2: sorting & merge blocks
-ISortAndMergeTextBlocks processor = new SortAndMergeTextBlocks(splitter.GetIndexs, folderHelper);
+ISortAndMergeTextBlocks processor = new ParrallelSort(splitter.GetIndexs, folderHelper);
 processor.Process();
 
 

@@ -2,47 +2,69 @@
 using SortTextFile.Interfaces;
 using System.IO.MemoryMappedFiles;
 
-internal sealed class SortAndMergeTextBlocks : ISortAndMergeTextBlocks
+internal sealed class ParrallelSort : ISortAndMergeTextBlocks
 {
-    const int blockSize = 3072; // The number of lines in the block
-
     private readonly IFoldersHelper _folderHelper;
     private readonly HashSet<string> _indexesHash;
-
-    /// <summary>
-    /// 
-    /// </summary>
-    /// <param name="indexs"></param>
-    /// <param name="folderHelper"></param>
-    internal SortAndMergeTextBlocks(HashSet<string> indexes, IFoldersHelper folderHelper)
+    private readonly int _threadsCount;
+    internal ParrallelSort(HashSet<string> indexes, IFoldersHelper folderHelper, int threadsCount = 4)
     {
         _indexesHash = indexes;
         _folderHelper = folderHelper;
+        _threadsCount = threadsCount;
     }
-
     void ISortAndMergeTextBlocks.Process()
     {
+
         var count = _indexesHash.Count;
         var it = 0L;
         Console.WriteLine("Merging ....");
 
 
-        foreach (var file in _indexesHash)
-        {
-            Console.Write($"\r{it * 100 / count}%");
 
-            GetBlocksAndSort(file);
+        ParallelOptions parallelOptions = new ParallelOptions
+        {
+            MaxDegreeOfParallelism = _threadsCount
+        };
+
+
+        var results = Parallel.ForEach(_indexesHash, parallelOptions, fileIndex =>
+        {
+            // Console.Write($"\r{it * 100 / count}%");
+            Console.WriteLine($"'{fileIndex}' Merging ....");
+            var sort = new SortAndMergeTextBlocks(_folderHelper);
+            sort.GetBlocksAndSort(fileIndex);
             it++;
-        }
-        Console.WriteLine();
-        Console.WriteLine("Merging ....Ok");
+
+            Console.WriteLine();
+            Console.WriteLine($"'{fileIndex}' Merging ....Ok");
+
+        });
+
+    }
+
+
+}
+internal sealed class SortAndMergeTextBlocks //: ISortAndMergeTextBlocks
+{
+    const int blockSize = 3072; // The number of lines in the block
+
+    private readonly IFoldersHelper _folderHelper;
+
+    /// <summary>
+    /// 
+    /// </summary>
+    /// <param name="folderHelper"></param>
+    internal SortAndMergeTextBlocks(IFoldersHelper folderHelper)
+    {
+        _folderHelper = folderHelper;
     }
 
     /// <summary>
     /// source file
     /// </summary>
     /// <param name="fileName"></param>
-    private void GetBlocksAndSort(string fileName)
+    internal void GetBlocksAndSort(string fileName)
     {
         int blockIndex = 0;
 
