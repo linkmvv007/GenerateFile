@@ -4,30 +4,38 @@ using System.IO.MemoryMappedFiles;
 
 internal sealed class SortAndMergeTextBlocks : ISortAndMergeTextBlocks
 {
-    const int blockSize = 1000; // The number of lines in the block
+    const int blockSize = 3072; // The number of lines in the block
 
     private readonly IFoldersHelper _folderHelper;
-    private readonly IFileSplitterLexicon _splitter;
+    private readonly HashSet<string> _indexesHash;
 
     /// <summary>
     /// 
     /// </summary>
-    /// <param name="splitter"></param>
+    /// <param name="indexs"></param>
     /// <param name="folderHelper"></param>
-    internal SortAndMergeTextBlocks(IFileSplitterLexicon splitter, IFoldersHelper folderHelper)
+    internal SortAndMergeTextBlocks(HashSet<string> indexes, IFoldersHelper folderHelper)
     {
-        _splitter = splitter;
+        _indexesHash = indexes;
         _folderHelper = folderHelper;
     }
 
     void ISortAndMergeTextBlocks.Process()
     {
-        var files = _splitter.GetIndexs;
+        var count = _indexesHash.Count;
+        var it = 0L;
+        Console.WriteLine("Merging ....");
 
-        foreach (var file in files)
+
+        foreach (var file in _indexesHash)
         {
+            Console.Write($"\r{it * 100 / count}%");
+
             GetBlocksAndSort(file);
+            it++;
         }
+        Console.WriteLine();
+        Console.WriteLine("Merging ....Ok");
     }
 
     /// <summary>
@@ -39,11 +47,11 @@ internal sealed class SortAndMergeTextBlocks : ISortAndMergeTextBlocks
         int blockIndex = 0;
 
         var bookIndexFile = _folderHelper.GetBookIndexFile(fileName);
-        using (var mmf = MemoryMappedFile.CreateFromFile(bookIndexFile, FileMode.Open, "MMF_BookIndex"))
+        using (var mmf = MemoryMappedFile.CreateFromFile(bookIndexFile, FileMode.Open, $"MMF_BookIndex_{fileName}"))
         using (var stream = mmf.CreateViewStream(0, 0, MemoryMappedFileAccess.Read))
         using (var reader = new StreamReader(stream))
-        //using (var fs = new FileStream(_folderHelper.GetBookIndexFile(Utils.FixFileName(fileName)), FileMode.Open, FileAccess.Read))
-        //using (var reader = new StreamReader(fs, Encoding.UTF8, true, 10 * 1024 * 1024)) // Чтение блоками по 1 МБ
+        //using (var fs = new FileStream(bookIndexFile, FileMode.Open, FileAccess.Read))
+        //using (var reader = new StreamReader(fs, Encoding.UTF8, true, 10 * 1024 * 1024)) // Чтение блоками по 10 МБ
         {
             var lineList = new List<string>(capacity: blockSize);
             string line;

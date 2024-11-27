@@ -29,10 +29,10 @@ IFoldersHelper folderHelper = new FoldersHelper(settings.TempDirectory);
 //step 1:  split
 IFileSplitterLexicon splitter = new FileSplitterLexicon(srcFile, folderHelper, settings.LengthBookIndex);
 splitter.SplitWithInfo();
-/*
+
 
 //step 2: sorting & merge blocks
-ISortAndMergeTextBlocks processor = new SortAndMergeTextBlocks(splitter, folderHelper);
+ISortAndMergeTextBlocks processor = new SortAndMergeTextBlocks(splitter.GetIndexs, folderHelper);
 processor.Process();
 
 
@@ -52,7 +52,7 @@ if (settings.IsDeleteFile)
 }
 
 Console.WriteLine("Finish Merging .... Ok");
-*/
+
 
 Console.WriteLine($"The number of rows is not in the format: {splitter.ErrorsCount}");
 Console.WriteLine($"See file : {folderHelper.GetBadFormatLinesNameFile(srcFile)}");
