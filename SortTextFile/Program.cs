@@ -16,7 +16,9 @@ Console.WriteLine("Hello, World!");
 
 // russian:
 
-const string srcFile = "c:\\Users\\Dell\\source\\repos\\3deye\\GenerateFile\\GenerateFile\\bin\\Debug\\net8.0\\output2Gb.txt";
+//const string srcFile = "c:\\Users\\Dell\\source\\repos\\3deye\\GenerateFile\\GenerateFile\\bin\\Debug\\net8.0\\output2Gb.txt";
+//const string srcFile = "d:\\TempDir\\output50Gb.txt";
+const string srcFile = "d:\\TempDir\\test.txt";
 //const string srcFile = "c:\\Users\\Dell\\source\\repos\\3deye\\GenerateFile\\GenerateFile\\bin\\Debug\\net8.0\\output10Mb.txt";
 
 //const string srcFile = "c:\\Users\\Dell\\source\\repos\\3deye\\GenerateFile\\GenerateFile\\bin\\Debug\\net8.0\\output20mb.txt";

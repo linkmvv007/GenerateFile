@@ -5,7 +5,7 @@ using System.Text;
 namespace SortTextFile;
 
 /// <summary>
-/// Generate book index
+/// Generate file index
 /// </summary>
 internal sealed class FileSplitterLexicon : IFileSplitterLexicon
 {
@@ -32,7 +32,7 @@ internal sealed class FileSplitterLexicon : IFileSplitterLexicon
 
     void IFileSplitterLexicon.SplitWithInfo()
     {
-        Console.WriteLine("Сreating index files...");
+        Console.WriteLine("Validation and index creation ...");
 
         var progress = 0L;
 
@@ -83,10 +83,9 @@ internal sealed class FileSplitterLexicon : IFileSplitterLexicon
         if (counter > 0L)
         {
             AppendBufferTextToFile();
-            // counter = 0;
         }
 
-        Console.WriteLine("Сreating index files... Ok");
+        Console.WriteLine("Validation and index creation... Ok");
     }
 
 
