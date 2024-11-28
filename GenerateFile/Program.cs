@@ -1,7 +1,6 @@
 ﻿using GenerateFile;
 using Microsoft.Extensions.Configuration;
 using System.Text;
-using static GenerateFile.Settings;
 
 class Program
 {
@@ -9,13 +8,24 @@ class Program
     private readonly static Random random = new();
     private readonly static int newLineLength = Encoding.UTF8.GetByteCount(Environment.NewLine);
 
+
     static void Main(string[] args)
     {
         Settings settings = ReadConfig();
 
-        var words = LoadEnglishDictionaryFromFile(settings.DictionaryFileName);
+        var wordsEngl = LoadDictionaryFromFile(
+            Path.Combine("Dictionary"
+            , settings.DictionaryEnglishFileName
+            ));
 
-        GenerateTestFile(settings.OutputFileOptions, words);
+        var allWords = LoadDictionaryFromFile(
+            Path.Combine("Dictionary",
+            settings.DictionaryRussianFileName
+            ));
+
+        allWords.AddRange(wordsEngl);
+
+        GenerateTestFile(settings.OutputFileOptions, allWords.AsReadOnly());
     }
 
     private static Settings ReadConfig()
@@ -30,9 +40,9 @@ class Program
         return settings;
     }
 
-    private static IReadOnlyList<string> LoadEnglishDictionaryFromFile(string filePath)
+    private static List<string> LoadDictionaryFromFile(string filePath)
     {
-        var words = new List<string>(capacity: 2000);
+        var words = new List<string>(capacity: 1_000_000);
 
         using (var reader = new StreamReader(filePath))
         {
@@ -40,12 +50,13 @@ class Program
             while ((line = reader.ReadLine()) != null)
             {
                 if (!string.IsNullOrWhiteSpace(line))
-                { }
-                words.Add(line);
+                {
+                    words.Add(line);
+                }
             }
         }
 
-        return words.AsReadOnly();
+        return words;
     }
 
     private static void GenerateTestFile(OutputParams parameters, IReadOnlyList<string> words)

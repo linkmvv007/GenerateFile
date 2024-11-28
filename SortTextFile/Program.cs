@@ -12,7 +12,12 @@ Console.WriteLine("Hello, World!");
 //const string srcFile = "c:\\Users\\Dell\\source\\repos\\3deye\\GenerateFile\\GenerateFile\\bin\\Debug\\net8.0\\output2Gb.txt";
 //const string srcFile = "c:\\Users\\Dell\\source\\repos\\3deye\\GenerateFile\\GenerateFile\\bin\\Debug\\net8.0\\output!.txt";
 
-const string srcFile = "c:\\Users\\Dell\\source\\repos\\3deye\\GenerateFile\\GenerateFile\\bin\\Debug\\net8.0\\output.txt";
+//const string srcFile = "c:\\Users\\Dell\\source\\repos\\3deye\\GenerateFile\\GenerateFile\\bin\\Debug\\net8.0\\output.txt";
+
+// russian:
+
+const string srcFile = "c:\\Users\\Dell\\source\\repos\\3deye\\GenerateFile\\GenerateFile\\bin\\Debug\\net8.0\\output2Gb.txt";
+//const string srcFile = "c:\\Users\\Dell\\source\\repos\\3deye\\GenerateFile\\GenerateFile\\bin\\Debug\\net8.0\\output10Mb.txt";
 
 //const string srcFile = "c:\\Users\\Dell\\source\\repos\\3deye\\GenerateFile\\GenerateFile\\bin\\Debug\\net8.0\\output20mb.txt";
 //const string srcFile = "c:\\Users\\Dell\\source\\repos\\3deye\\GenerateFile\\GenerateFile\\bin\\Debug\\net8.0\\test.txt";
@@ -32,7 +37,12 @@ splitter.SplitWithInfo();
 
 
 //step 2: sorting & merge blocks
-IParallelSorting processor = new ParallelSorting(splitter.GetIndexs, folderHelper);
+IParallelSorting processor = new ParallelSorting(
+    splitter.GetIndexs
+    , folderHelper
+    , settings.MaxNumberThreads
+    , settings.IsDeleteFile
+    );
 processor.Process();
 
 

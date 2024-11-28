@@ -2,7 +2,8 @@
 
 internal sealed class Settings
 {
-    public string DictionaryFileName { get; init; }
+    public string DictionaryEnglishFileName { get; init; }
+    public string DictionaryRussianFileName { get; init; }
     public OutputParams OutputFileOptions { get; init; }
 
 }

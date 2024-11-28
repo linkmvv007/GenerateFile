@@ -7,14 +7,16 @@ internal sealed class SortAndMergeTextBlocks : ISortAndMergeTextBlocks
     const int blockSize = 3072; // The number of lines in the block
 
     private readonly IFoldersHelper _folderHelper;
+    private readonly bool _isDeleteFiles;
 
     /// <summary>
     /// 
     /// </summary>
     /// <param name="folderHelper"></param>
-    internal SortAndMergeTextBlocks(IFoldersHelper folderHelper)
+    internal SortAndMergeTextBlocks(IFoldersHelper folderHelper, bool isDeleteFiles = true)
     {
         _folderHelper = folderHelper;
+        _isDeleteFiles = isDeleteFiles;
     }
 
     /// <summary>
@@ -23,7 +25,11 @@ internal sealed class SortAndMergeTextBlocks : ISortAndMergeTextBlocks
     /// <param name="fileName"></param>
     void ISortAndMergeTextBlocks.GetBlocksAndSort(string fileName)
     {
-        int blockIndex = 0;
+        int blockIndex = -1;
+
+        var lineList = new List<string>(capacity: blockSize);
+        string line;
+
 
         var bookIndexFile = _folderHelper.GetBookIndexFile(fileName);
         using (var mmf = MemoryMappedFile.CreateFromFile(bookIndexFile, FileMode.Open, $"MMF_BookIndex_{fileName}"))
@@ -32,9 +38,6 @@ internal sealed class SortAndMergeTextBlocks : ISortAndMergeTextBlocks
         //using (var fs = new FileStream(bookIndexFile, FileMode.Open, FileAccess.Read))
         //using (var reader = new StreamReader(fs, Encoding.UTF8, true, 10 * 1024 * 1024)) // Чтение блоками по 10 МБ
         {
-            var lineList = new List<string>(capacity: blockSize);
-            string line;
-
             while ((line = reader.ReadLine()) != null && line[0] != '\0')
             //while ((line = reader.ReadLine()) != null)
             {
@@ -42,19 +45,22 @@ internal sealed class SortAndMergeTextBlocks : ISortAndMergeTextBlocks
 
                 if (lineList.Count >= blockSize)
                 {
-                    SortAndSaveBlock(lineList, blockIndex++, fileName);
+                    SortAndSaveBlock(lineList, ++blockIndex, fileName);
                     lineList.Clear();
                 }
             }
-
-            if (lineList.Count > 0)
-            {
-                SortAndSaveBlock(lineList, blockIndex, fileName);
-            }
         }
 
-        //todo : remove book index file:
-        Utils.DeleteFile(bookIndexFile);
+        if (lineList.Count > 0)
+        {
+            SortAndSaveBlock(lineList, ++blockIndex, fileName);
+        }
+
+        // remove book index file:
+        if (_isDeleteFiles)
+        {
+            Utils.DeleteFile(bookIndexFile);
+        }
 
         MergeSortedFiles(fileName, blockIndex);
     }
