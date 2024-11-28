@@ -2,50 +2,7 @@
 using SortTextFile.Interfaces;
 using System.IO.MemoryMappedFiles;
 
-internal sealed class ParrallelSort : ISortAndMergeTextBlocks
-{
-    private readonly IFoldersHelper _folderHelper;
-    private readonly HashSet<string> _indexesHash;
-    private readonly int _threadsCount;
-    internal ParrallelSort(HashSet<string> indexes, IFoldersHelper folderHelper, int threadsCount = 4)
-    {
-        _indexesHash = indexes;
-        _folderHelper = folderHelper;
-        _threadsCount = threadsCount;
-    }
-    void ISortAndMergeTextBlocks.Process()
-    {
-
-        var count = _indexesHash.Count;
-        var it = 0L;
-        Console.WriteLine("Merging ....");
-
-
-
-        ParallelOptions parallelOptions = new ParallelOptions
-        {
-            MaxDegreeOfParallelism = _threadsCount
-        };
-
-
-        var results = Parallel.ForEach(_indexesHash, parallelOptions, fileIndex =>
-        {
-            // Console.Write($"\r{it * 100 / count}%");
-            Console.WriteLine($"'{fileIndex}' Merging ....");
-            var sort = new SortAndMergeTextBlocks(_folderHelper);
-            sort.GetBlocksAndSort(fileIndex);
-            it++;
-
-            Console.WriteLine();
-            Console.WriteLine($"'{fileIndex}' Merging ....Ok");
-
-        });
-
-    }
-
-
-}
-internal sealed class SortAndMergeTextBlocks //: ISortAndMergeTextBlocks
+internal sealed class SortAndMergeTextBlocks : ISortAndMergeTextBlocks
 {
     const int blockSize = 3072; // The number of lines in the block
 
@@ -64,7 +21,7 @@ internal sealed class SortAndMergeTextBlocks //: ISortAndMergeTextBlocks
     /// source file
     /// </summary>
     /// <param name="fileName"></param>
-    internal void GetBlocksAndSort(string fileName)
+    void ISortAndMergeTextBlocks.GetBlocksAndSort(string fileName)
     {
         int blockIndex = 0;
 
@@ -234,8 +191,7 @@ internal sealed class SortAndMergeTextBlocks //: ISortAndMergeTextBlocks
 
     private class CustomComparer : IComparer<string>
     {
-        public int Compare(string? x, string? y) => CompareFunc(x, y);
-
+        public int Compare(string x, string y) => CompareFunc(x, y);
     }
 }
 

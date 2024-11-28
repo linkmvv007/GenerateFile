@@ -2,5 +2,5 @@
 
 internal interface ISortAndMergeTextBlocks
 {
-    void Process();
+    void GetBlocksAndSort(string fileName);
 }

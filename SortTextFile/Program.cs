@@ -9,10 +9,10 @@ Console.WriteLine("Hello, World!");
 
 //100L * 1024 * 1024 * 1024; // 100 ГБ в байтах  => 107374182400
 
-const string srcFile = "c:\\Users\\Dell\\source\\repos\\3deye\\GenerateFile\\GenerateFile\\bin\\Debug\\net8.0\\output2Gb.txt";
+//const string srcFile = "c:\\Users\\Dell\\source\\repos\\3deye\\GenerateFile\\GenerateFile\\bin\\Debug\\net8.0\\output2Gb.txt";
 //const string srcFile = "c:\\Users\\Dell\\source\\repos\\3deye\\GenerateFile\\GenerateFile\\bin\\Debug\\net8.0\\output!.txt";
 
-//const string srcFile = "c:\\Users\\Dell\\source\\repos\\3deye\\GenerateFile\\GenerateFile\\bin\\Debug\\net8.0\\output.txt";
+const string srcFile = "c:\\Users\\Dell\\source\\repos\\3deye\\GenerateFile\\GenerateFile\\bin\\Debug\\net8.0\\output.txt";
 
 //const string srcFile = "c:\\Users\\Dell\\source\\repos\\3deye\\GenerateFile\\GenerateFile\\bin\\Debug\\net8.0\\output20mb.txt";
 //const string srcFile = "c:\\Users\\Dell\\source\\repos\\3deye\\GenerateFile\\GenerateFile\\bin\\Debug\\net8.0\\test.txt";
@@ -32,7 +32,7 @@ splitter.SplitWithInfo();
 
 
 //step 2: sorting & merge blocks
-ISortAndMergeTextBlocks processor = new ParrallelSort(splitter.GetIndexs, folderHelper);
+IParallelSorting processor = new ParallelSorting(splitter.GetIndexs, folderHelper);
 processor.Process();
 
 

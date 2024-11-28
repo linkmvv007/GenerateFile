@@ -103,23 +103,26 @@ internal sealed class FileSplitterLexicon : IFileSplitterLexicon
             {
                 if (!Char.IsLetterOrDigit(xTextPart[i]))
                 {
-                    var result = GetLetter(xTextPart[0..1]);
-
-                    return xTextPart.Length switch
-                    {
-                        > 3 => result + GetLetter(xTextPart[1..2]) + GetLetter(xTextPart[2..3]) + GetLetter(xTextPart[3..4]),
-                        > 2 => result + GetLetter(xTextPart[1..2]) + GetLetter(xTextPart[2..3]),
-                        > 1 => result + GetLetter(xTextPart[1..2]),
-                        _ => result
-                    };
+                    return ReplaceCharacters(xTextPart[..(lengthToCheck)].ToArray(), lengthToCheck);
                 }
             }
 
-            return xTextPart[0..lengthToCheck].ToString();
+            return xTextPart[..lengthToCheck].ToString();
         }
 
         return string.Empty;
     }
+
+    public static string ReplaceCharacters(char[] span, int length)
+    {
+        for (int i = 0; i < length; i++)
+        {
+            span[i] = GetLetter(span[i]);
+        }
+
+        return new string(span, 0, length);
+    }
+
 
     /// <summary>
     /// 
@@ -147,14 +150,13 @@ internal sealed class FileSplitterLexicon : IFileSplitterLexicon
         long xNumber;
         return !long.TryParse(xSpan[..xDotIndex], out xNumber);
     }
-
-    private static string GetLetter(ReadOnlySpan<char> ch)
+    private static char GetLetter(char ch)
     {
-        return ch[0] switch
+        return ch switch
         {
-            char c when Char.IsLetterOrDigit(c) => ch.ToString(),
-            char c when c < '0' => "!",
-            _ => "~"
+            char c when Char.IsLetterOrDigit(c) => ch,
+            char c when c < '0' => '!',
+            _ => '~'
         };
     }
 
