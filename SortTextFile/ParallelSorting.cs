@@ -18,8 +18,8 @@ internal sealed class ParallelSorting : IParallelSorting
     void IParallelSorting.Process()
     {
         var count = _indexesHash.Count;
-        //var it = 0L;
-        Console.WriteLine("Merging ....");
+
+        Console.WriteLine("Sorting & merging ....");
 
         ParallelOptions parallelOptions = new()
         {
@@ -29,14 +29,11 @@ internal sealed class ParallelSorting : IParallelSorting
 
         var results = Parallel.ForEach(_indexesHash, parallelOptions, fileIndex =>
         {
-            // Console.Write($"\r{it * 100 / count}%");
-            Console.WriteLine($"'{fileIndex}' \tmerging ....");
+            Console.WriteLine($"'{fileIndex}' \tsorting ....");
             ISortAndMergeTextBlocks sort = new SortAndMergeTextBlocks(_folderHelper, _isDeleteFiles);
             sort.GetBlocksAndSort(fileIndex);
-            //it++;
 
-            //Console.WriteLine();
-            Console.WriteLine($"'{fileIndex}' \tmerging ....Ok");
+            Console.WriteLine($"'{fileIndex}' \tsorting ....Ok");
         });
 
     }
