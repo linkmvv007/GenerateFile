@@ -4,6 +4,20 @@ namespace SortTextFile;
 
 internal class Utils
 {
+    internal static void TrimEndNulls(ref string input)
+    {
+        int endIndex = input.Length - 1;
+        int change = endIndex;
+        while (endIndex >= 0 && input[endIndex] == '\0')
+        {
+            endIndex--;
+        }
+
+        if (change != endIndex)
+            input = input.Substring(0, endIndex + 1);
+    }
+
+
     internal static void DeleteFile(string filePath)
     {
         if (File.Exists(filePath))

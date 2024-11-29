@@ -4,7 +4,9 @@ using System.IO.MemoryMappedFiles;
 
 internal sealed class SortAndMergeTextBlocks : ISortAndMergeTextBlocks
 {
-    const int blockSize = 3072; // The number of lines in the block
+    const int blockSize = 10240; // The number of lines in the block
+    //const int blockSize = 50; // The number of lines in the block
+    //const int blockSize = 1; // The number of lines in the block
 
     private readonly IFoldersHelper _folderHelper;
     private readonly bool _isDeleteFiles;
@@ -32,15 +34,19 @@ internal sealed class SortAndMergeTextBlocks : ISortAndMergeTextBlocks
 
 
         var bookIndexFile = _folderHelper.GetBookIndexFile(fileName);
-        using (var mmf = MemoryMappedFile.CreateFromFile(bookIndexFile, FileMode.Open, $"MMF_BookIndex_{fileName}"))
+        using (var mmf = MemoryMappedFile.CreateFromFile(bookIndexFile, FileMode.Open, $"MMF_BookIndex_{DateTime.Now:HHmmss}_{fileName}"))
         using (var stream = mmf.CreateViewStream(0, 0, MemoryMappedFileAccess.Read))
         using (var reader = new StreamReader(stream))
         //using (var fs = new FileStream(bookIndexFile, FileMode.Open, FileAccess.Read))
         //using (var reader = new StreamReader(fs, Encoding.UTF8, true, 10 * 1024 * 1024)) // Чтение блоками по 10 МБ
         {
-            while ((line = reader.ReadLine()) != null && line[0] != '\0')
-            //while ((line = reader.ReadLine()) != null)
+            while ((line = reader.ReadLine()) != null)
             {
+                if (line.Length > 0 && line[0] == '\0')
+                    continue;
+
+                Utils.TrimEndNulls(ref line);
+
                 lineList.Add(line);
 
                 if (lineList.Count >= blockSize)
@@ -97,7 +103,7 @@ internal sealed class SortAndMergeTextBlocks : ISortAndMergeTextBlocks
 
 
         var readers = new StreamReader[blockIndex + 1];
-        for (int i = 0; i <= blockIndex; i++)
+        for (int i = 0; i < readers.Length; i++)
         {
             readers[i] = new StreamReader(_folderHelper.GetChunkFullNameFile(fileName, i));
         }
@@ -106,24 +112,24 @@ internal sealed class SortAndMergeTextBlocks : ISortAndMergeTextBlocks
         {
             using var output = new StreamWriter(_folderHelper.GetSortedChunkFullNameFile(fileName));
 
-            var queue = new SortedDictionary<string, Queue<int>>(new CustomComparer());
+            var sortedLinesDict = new SortedDictionary<string, Queue<int>>(new CustomComparer());
 
             for (int i = 0; i < readers.Length; i++)
             {
                 if (!readers[i].EndOfStream)
                 {
                     string line = readers[i].ReadLine();
-                    if (!queue.ContainsKey(line))
+                    if (!sortedLinesDict.ContainsKey(line))
                     {
-                        queue[line] = new Queue<int>();
+                        sortedLinesDict[line] = new Queue<int>();
                     }
-                    queue[line].Enqueue(i);  // the line in which queue is located
+                    sortedLinesDict[line].Enqueue(i);  // the line in which queue is located
                 }
             }
 
-            while (queue.Count > 0)
+            while (sortedLinesDict.Count > 0)
             {
-                var kvp = queue.First();
+                var kvp = sortedLinesDict.First();
                 string line = kvp.Key;               // line
                 Queue<int> fileIndices = kvp.Value;  // queue
 
@@ -135,7 +141,7 @@ internal sealed class SortAndMergeTextBlocks : ISortAndMergeTextBlocks
 
                     if (!readers[streamIndex].EndOfStream)
                     {
-                        string? newLine = readers[streamIndex].ReadLine(); // reading the line
+                        string newLine = readers[streamIndex].ReadLine(); // reading the line
 
                         if (newLine == line)
                         {
@@ -143,22 +149,22 @@ internal sealed class SortAndMergeTextBlocks : ISortAndMergeTextBlocks
                         }
                         else
                         {
-                            if (!queue.ContainsKey(newLine))
+                            if (!sortedLinesDict.ContainsKey(newLine))
                             {
-                                queue[newLine] = new Queue<int>();
+                                sortedLinesDict[newLine] = new Queue<int>();
                             }
 
-                            queue[newLine].Enqueue(streamIndex);
+                            sortedLinesDict[newLine].Enqueue(streamIndex);
                         }
                     }
                 }
 
-                queue.Remove(line);
+                sortedLinesDict.Remove(line);
             }
         }
         finally
         {
-            for (int i = 0; i <= blockIndex; i++)
+            for (int i = 0; i < readers.Length; i++)
             {
                 readers[i]?.Dispose();
                 Utils.DeleteFile(_folderHelper.GetChunkFullNameFile(fileName, i));

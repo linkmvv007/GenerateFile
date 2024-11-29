@@ -9,7 +9,8 @@ namespace SortTextFile;
 /// </summary>
 internal sealed class FileSplitterLexicon : IFileSplitterLexicon
 {
-    private static int _maxBookIndexLength = 4;
+    private readonly int DefaultBookIndexLength = 4;
+    private static int _maxBookIndexLength;
 
     const long BufferSize = 10_000_000L; // 10млн строк
 
@@ -24,7 +25,7 @@ internal sealed class FileSplitterLexicon : IFileSplitterLexicon
         _fileName = fileName;
         _folderHelper = folderHelper;
 
-        _maxBookIndexLength = bookIndexLength < 1 ? 1 : bookIndexLength;
+        _maxBookIndexLength = bookIndexLength < 1 ? DefaultBookIndexLength : bookIndexLength;
     }
 
     HashSet<string> IFileSplitterLexicon.GetIndexs => _indexFileNames.Keys.ToHashSet();
@@ -35,12 +36,11 @@ internal sealed class FileSplitterLexicon : IFileSplitterLexicon
         Console.WriteLine("Validation and index creation ...");
 
         var progress = 0L;
-
         var counter = 0L;
         bool errors;
 
         using (IWriteToFile badLinesFile = new WriteToFile(_folderHelper.GetBadFormatLinesNameFile(_fileName)))
-        using (var mmf = MemoryMappedFile.CreateFromFile(_fileName, FileMode.Open, "MMF"))  // Creating a memory-mapped file
+        using (var mmf = MemoryMappedFile.CreateFromFile(_fileName, FileMode.Open, $"MMF{DateTime.Now:HHmmss}"))  // Creating a memory-mapped file
         using (var stream = mmf.CreateViewStream(0, 0, MemoryMappedFileAccess.Read))        // Creating a view for reading a file
         using (var sr = new StreamReader(stream, Encoding.UTF8))
         //using (var fs = new FileStream(_fileName, FileMode.Open, FileAccess.Read))
@@ -49,9 +49,13 @@ internal sealed class FileSplitterLexicon : IFileSplitterLexicon
             string? line;
             string name;
 
-            while ((line = sr.ReadLine()) != null && line[0] != '\0')
-            //while ((line = sr.ReadLine()) != null)
+            while ((line = sr.ReadLine()) != null)
             {
+                if (line.Length > 0 && line[0] == '\0')
+                    continue;
+
+                Utils.TrimEndNulls(ref line);
+
                 name = GetNameIndexFile(line, out errors);
                 if (errors)
                 {
