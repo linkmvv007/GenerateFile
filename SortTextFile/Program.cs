@@ -66,12 +66,10 @@ catch (Exception ex)
     Console.WriteLine(ex.ToString());
 }
 
-Console.WriteLine($"Execution time: {stopwatch.ElapsedMilliseconds} ms");
+stopwatch.Stop();
+
 TimeSpan ts = stopwatch.Elapsed;
-
-
-Console.WriteLine($"Execution time: {string.Format("{0:00}:{0:00}:{1:00}.{2:00}",
-ts.Hours, ts.Minutes, ts.Seconds, ts.Milliseconds / 10)}");
+Console.WriteLine($"Execution time: {ts.ToString(@"hh\:mm\:ss\.fffffff")}");
 
 
 Console.WriteLine("Press any key ...");
