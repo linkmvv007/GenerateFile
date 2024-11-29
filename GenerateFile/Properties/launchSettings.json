@@ -1,0 +1,8 @@
+{
+  "profiles": {
+    "GenerateFile": {
+      "commandName": "Project",
+      "commandLineArgs": "c:\\Users\\Dell\\source\\repos\\3deye\\GenerateFile\\GenerateFile\\bin\\Debug\\net8.0\\dictionary.txt"
+    }
+  }
+}

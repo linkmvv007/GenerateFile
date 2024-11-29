@@ -11,6 +11,5 @@ internal sealed class OutputParams
 {
     public string OutputFileName { get; init; }
     public int TargetSizeInMBytes { get; init; }
-    public int RandomMax { get; init; }
     public int Multiplier { get; init; }
 }
