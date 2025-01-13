@@ -1,13 +1,13 @@
-﻿# GenerateFile
+﻿# GenerateFile & SortTextFile
 
-GenerateFile - a program creates a test file of the specified size. 
+1. GenerateFile - a program creates a test file of the specified size. 
 All parameters for creating a test file are set in appsettings.json
 
 command line:
 GenerateFile.exe "c:\testPath\test.txt"
 
 
-SortTextFile - a program for sorting large text files of a certain format.
+2. SortTextFile - a program for sorting large text files of a certain format.
 All parameters for creating a test file are set in appsettings.json
 
 
