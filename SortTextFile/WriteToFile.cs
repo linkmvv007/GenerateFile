@@ -4,14 +4,11 @@ namespace SortTextFile;
 
 internal sealed class WriteToFile : IWriteToFile
 {
-    private readonly string _fileName;
     private readonly FileStream _fs;
     private readonly StreamWriter _sw;
     internal WriteToFile(string fileName)
     {
-        _fileName = fileName;
-
-        _fs = new FileStream(_fileName, FileMode.Create, FileAccess.Write);
+        _fs = new FileStream(fileName, FileMode.Create, FileAccess.Write);
         _sw = new StreamWriter(_fs);
     }
 
